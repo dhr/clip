@@ -1,7 +1,7 @@
 CLIP_STRINGIFY(
-kernel void filter_cpu(global float *image, constant float *filter,
+kernel void filter_cpu(global imval* image, constant float *filter,
                        int filt_width, int filt_height,
-                       global float *output) {
+                       global imval* output) {
   int im_width = get_global_size(0);
   int im_height = get_global_size(1);
   
@@ -17,13 +17,13 @@ kernel void filter_cpu(global float *image, constant float *filter,
   int im_base_y = im_y - half_filt_height;
   
   int min_valid_filt_y = im_y < half_filt_height ?
-  half_filt_height - im_y : 0;
+                         half_filt_height - im_y : 0;
   int max_valid_filt_y = im_base_y + filt_height > im_height ?
-  im_height - im_base_y - 1 : filt_height - 1;
+                         im_height - im_base_y - 1 : filt_height - 1;
   int min_valid_filt_x = im_x < half_filt_width ?
-  half_filt_width - im_x : 0;
+                         half_filt_width - im_x : 0;
   int max_valid_filt_x = im_base_x + filt_width > im_width ?
-  im_width - im_base_x - 1 : filt_width - 1;
+                         im_width - im_base_x - 1 : filt_width - 1;
   
   float4 sum4 = 0;
   for (int filt_y = min_valid_filt_y;
@@ -39,7 +39,7 @@ kernel void filter_cpu(global float *image, constant float *filter,
     int filt_x4 = 0;
     while (filt_x <= max_valid_filt_x - 3) {
       float4 filt4 = vload4(filt_x4, filter + filt_offset);
-      float4 im4 = vload4(filt_x4, image + im_indx_base);
+      float4 im4 = load_imval4(im_indx_base + filt_x4, image);
       sum4 += filt4*im4;
       filt_x += 4;
       ++filt_x4;
@@ -50,28 +50,28 @@ kernel void filter_cpu(global float *image, constant float *filter,
     int im_indx = im_indx_base + filt_x;
     
     if (x_mod == 1)
-      sum4.x += filter[filt_indx]*image[im_indx];
+      sum4.x += filter[filt_indx]*load_imval(im_indx, image);
     else if (x_mod == 2) {
-      sum4.x += filter[filt_indx]*image[im_indx];
-      sum4.y += filter[filt_indx + 1]*image[im_indx + 1];
+      sum4.x += filter[filt_indx]*load_imval(im_indx, image);
+      sum4.y += filter[filt_indx + 1]*load_imval(im_indx + 1, image);
     }
     else if (x_mod == 3) {
-      sum4.x += filter[filt_indx]*image[im_indx];
-      sum4.y += filter[filt_indx + 1]*image[im_indx + 1];
-      sum4.z += filter[filt_indx + 2]*image[im_indx + 2];
+      sum4.x += filter[filt_indx]*load_imval(im_indx, image);
+      sum4.y += filter[filt_indx + 1]*load_imval(im_indx + 1, image);
+      sum4.z += filter[filt_indx + 2]*load_imval(im_indx + 2, image);
     }
   }
   
-  output[out_indx] = sum4.x + sum4.y + sum4.z + sum4.w;
+  store_imval(sum4.x + sum4.y + sum4.z + sum4.w, out_indx, output);
 }
 
-kernel void filter_gpu(global float4 *image,
+kernel void filter_gpu(global imval4* image,
                        local float *im_cache,
                        constant float *filter,
                        local float *filt_cache,
                        int filt_width,
                        int filt_height,
-                       global float *output) {
+                       global imval* output) {
   int im_x = get_global_id(0);
   int im_y = get_global_id(1);
   int im_width = get_global_size(0);
@@ -112,12 +112,12 @@ kernel void filter_gpu(global float4 *image,
   
   barrier(CLK_LOCAL_MEM_FENCE);
   
-  vstore4(image[im_indx], local_x, local_row_base);
+  vstore4(load_imval(im_indx, image), local_x, local_row_base);
   
   if (local_x - group_width >= -n_lr_apron_quads) {
     int quad_offs = -group_width;
     int im_indx_off = (im_x + quad_offs >= 0 ? quad_offs : -im_x);
-    vstore4(image[im_indx + im_indx_off],
+    vstore4(load_imval(im_indx + im_indx_off, image),
             local_x + quad_offs, local_row_base);
   }
   
@@ -125,7 +125,7 @@ kernel void filter_gpu(global float4 *image,
     int quad_offs = group_width;
     int im_indx_off = (im_x + quad_offs < im_width ?
                        quad_offs : group_width - local_x - 1);
-    vstore4(image[im_indx + im_indx_off],
+    vstore4(load_imval(im_indx + im_indx_off, image),
             local_x + quad_offs, local_row_base);
   }
   
@@ -134,13 +134,14 @@ kernel void filter_gpu(global float4 *image,
     int local_quad_offs = -group_height*im_cache_quad_width + local_x;
     int im_indx_off =
     (im_y - group_height >= 0 ? im_quad_offs : -im_y*im_width);
-    vstore4(image[im_indx + im_indx_off], local_quad_offs, local_row_base);
+    vstore4(load_imval(im_indx + im_indx_off, image),
+            local_quad_offs, local_row_base);
     
     if (local_x - group_width >= -n_lr_apron_quads) {
       int quad_offs = -group_width;
       int new_im_indx_off = im_indx_off +
       (im_x + quad_offs >= 0 ? quad_offs : -im_x);
-      vstore4(image[im_indx + new_im_indx_off],
+      vstore4(load_imval(im_indx + new_im_indx_off, image),
               local_quad_offs + quad_offs, local_row_base);
     }
     
@@ -149,7 +150,7 @@ kernel void filter_gpu(global float4 *image,
       int new_im_indx_off = im_indx_off +
       (im_x + quad_offs < im_width ?
        quad_offs : group_width - local_x - 1);
-      vstore4(image[im_indx + new_im_indx_off],
+      vstore4(load_imval(im_indx + new_im_indx_off, image),
               local_quad_offs + quad_offs, local_row_base);
     }
   }
@@ -157,16 +158,16 @@ kernel void filter_gpu(global float4 *image,
   if (local_y < top_apron_height) {
     int im_quad_offs = group_height*im_width;
     int local_quad_offs = group_height*im_cache_quad_width + local_x;
-    int im_indx_off =
-    (im_y + group_height < im_height ?
-     im_quad_offs : (group_height - 1 - local_y)*im_width);
-    vstore4(image[im_indx + im_indx_off], local_quad_offs, local_row_base);
+    int im_indx_off = (im_y + group_height < im_height ?
+                       im_quad_offs : (group_height - 1 - local_y)*im_width);
+    vstore4(load_imval(im_indx + im_indx_off, image),
+            local_quad_offs, local_row_base);
     
     if (local_x - group_width >= -n_lr_apron_quads) {
       int quad_offs = -group_width;
       int new_im_indx_off = im_indx_off +
       (im_x + quad_offs >= 0 ? quad_offs : -im_x);
-      vstore4(image[im_indx + new_im_indx_off],
+      vstore4(load_imval(im_indx + new_im_indx_off, image),
               local_quad_offs + quad_offs, local_row_base);
     }
     
@@ -175,7 +176,7 @@ kernel void filter_gpu(global float4 *image,
       int new_im_indx_off = im_indx_off +
       (im_x + quad_offs < im_width ?
        quad_offs : group_width - local_x - 1);
-      vstore4(image[im_indx + new_im_indx_off],
+      vstore4(load_imval(im_indx + new_im_indx_off, image),
               local_quad_offs + quad_offs, local_row_base);
     }
   }
@@ -201,10 +202,10 @@ kernel void filter_gpu(global float4 *image,
   
   int out_indx_base = 4*(im_y*im_width + group_id_x*group_width) + local_x;
   
-  output[out_indx_base] = sum.x;
-  output[out_indx_base + group_width] = sum.y;
-  output[out_indx_base + 2*group_width] = sum.z;
-  output[out_indx_base + 3*group_width] = sum.w;
+  store_imval(sum.x, out_indx_base, output);
+  store_imval(sum.y, out_indx_base + group_width, output);
+  store_imval(sum.z, out_indx_base + 2*group_width, output);
+  store_imval(sum.w, out_indx_base + 3*group_width, output);
 }
 
 typedef struct sparse_value {
@@ -213,12 +214,12 @@ typedef struct sparse_value {
   float val;
 } sparse_value;
 
-kernel void filter_sparse_cpu(global float *image,
+kernel void filter_sparse_cpu(global imval* image,
                               constant sparse_value *filter,
                               int filt_width,
                               int filt_height,
                               int num_filt_elems,
-                              global float *output) {
+                              global imval* output) {
   int im_width = get_global_size(0);
   int im_height = get_global_size(1);
   
@@ -249,20 +250,20 @@ kernel void filter_sparse_cpu(global float *image,
     }
     
     int im_indx = (im_base_y + sv.y)*im_width + im_base_x + sv.x;
-    sum += image[im_indx]*sv.val;
+    sum += load_imval(im_indx, image)*sv.val;
   }
   
-  output[out_indx] = sum;
+  store_imval(sum, out_indx, output);
 }
 
-kernel void filter_sparse_gpu(global float4 *image,
+kernel void filter_sparse_gpu(global imval4* image,
                               local float *im_cache,
                               constant sparse_value *filter,
                               local sparse_value *filt_cache,
                               int filt_width,
                               int filt_height,
                               int num_filt_elems,
-                              global float *output) {
+                              global imval* output) {
   int im_x = get_global_id(0);
   int im_y = get_global_id(1);
   int im_width = get_global_size(0);
@@ -300,12 +301,12 @@ kernel void filter_sparse_gpu(global float4 *image,
   
   barrier(CLK_LOCAL_MEM_FENCE);
   
-  vstore4(image[im_indx], local_x, local_row_base);
+  vstore4(load_imval(im_indx, image), local_x, local_row_base);
   
   if (local_x - group_width >= -n_lr_apron_quads) {
     int quad_offs = -group_width;
     int im_indx_off = (im_x + quad_offs >= 0 ? quad_offs : -im_x);
-    vstore4(image[im_indx + im_indx_off],
+    vstore4(load_imval(im_indx + im_indx_off, image),
             local_x + quad_offs, local_row_base);
   }
   
@@ -313,7 +314,7 @@ kernel void filter_sparse_gpu(global float4 *image,
     int quad_offs = group_width;
     int im_indx_off = (im_x + quad_offs < im_width ?
                        quad_offs : group_width - local_x - 1);
-    vstore4(image[im_indx + im_indx_off],
+    vstore4(load_imval(im_indx + im_indx_off, image),
             local_x + quad_offs, local_row_base);
   }
   
@@ -322,13 +323,14 @@ kernel void filter_sparse_gpu(global float4 *image,
     int local_quad_offs = -group_height*im_cache_quad_width + local_x;
     int im_indx_off =
     (im_y - group_height >= 0 ? im_quad_offs : -im_y*im_width);
-    vstore4(image[im_indx + im_indx_off], local_quad_offs, local_row_base);
+    vstore4(load_imval(im_indx + im_indx_off, image),
+            local_quad_offs, local_row_base);
     
     if (local_x - group_width >= -n_lr_apron_quads) {
       int quad_offs = -group_width;
       int new_im_indx_off = im_indx_off +
       (im_x + quad_offs >= 0 ? quad_offs : -im_x);
-      vstore4(image[im_indx + new_im_indx_off],
+      vstore4(load_imval(im_indx + new_im_indx_off, image),
               local_quad_offs + quad_offs, local_row_base);
     }
     
@@ -337,7 +339,7 @@ kernel void filter_sparse_gpu(global float4 *image,
       int new_im_indx_off = im_indx_off +
       (im_x + quad_offs < im_width ?
        quad_offs : group_width - local_x - 1);
-      vstore4(image[im_indx + new_im_indx_off],
+      vstore4(load_imval(im_indx + new_im_indx_off, image),
               local_quad_offs + quad_offs, local_row_base);
     }
   }
@@ -348,13 +350,14 @@ kernel void filter_sparse_gpu(global float4 *image,
     int im_indx_off =
     (im_y + group_height < im_height ?
      im_quad_offs : (group_height - 1 - local_y)*im_width);
-    vstore4(image[im_indx + im_indx_off], local_quad_offs, local_row_base);
+    vstore4(load_imval(im_indx + im_indx_off, image),
+            local_quad_offs, local_row_base);
     
     if (local_x - group_width >= -n_lr_apron_quads) {
       int quad_offs = -group_width;
       int new_im_indx_off = im_indx_off +
       (im_x + quad_offs >= 0 ? quad_offs : -im_x);
-      vstore4(image[im_indx + new_im_indx_off],
+      vstore4(load_imval(im_indx + new_im_indx_off, image),
               local_quad_offs + quad_offs, local_row_base);
     }
     
@@ -363,7 +366,7 @@ kernel void filter_sparse_gpu(global float4 *image,
       int new_im_indx_off = im_indx_off +
       (im_x + quad_offs < im_width ?
        quad_offs : group_width - local_x - 1);
-      vstore4(image[im_indx + new_im_indx_off],
+      vstore4(load_imval(im_indx + new_im_indx_off, image),
               local_quad_offs + quad_offs, local_row_base);
     }
   }
@@ -385,9 +388,9 @@ kernel void filter_sparse_gpu(global float4 *image,
   
   int out_indx_base = 4*(im_y*im_width + group_id_x*group_width) + local_x;
   
-  output[out_indx_base] = sum.x;
-  output[out_indx_base + group_width] = sum.y;
-  output[out_indx_base + 2*group_width] = sum.z;
-  output[out_indx_base + 3*group_width] = sum.w;
+  store_imval(sum.x, out_indx_base, output);
+  store_imval(sum.y, out_indx_base + group_width, output);
+  store_imval(sum.z, out_indx_base + 2*group_width, output);
+  store_imval(sum.w, out_indx_base + 3*group_width, output);
 }
 )
