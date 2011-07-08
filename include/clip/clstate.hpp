@@ -53,6 +53,22 @@ i32 SizeofValueType(ValueType type) {
   }
 }
 
+ValueType ValueTypeForBitDepth(i32 depth) {
+  switch (depth) {
+    case 8:
+      return Int8;
+    
+    case 16:
+      return Float16;
+    
+    case 32:
+      return Float32;
+      
+    default:
+      throw std::invalid_argument("No corresponding value type for bit depth");
+  }
+}
+
 typedef i32 ContextID;
 
 namespace detail {
