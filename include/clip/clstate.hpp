@@ -102,6 +102,11 @@ inline ValueType& imageBufferValueType() {
   return imageBufferValueType;
 }
 
+inline i32& enqueuesPerFinish() {
+  static i32 enqueuesPerFinish = 5000;
+  return enqueuesPerFinish;
+}
+
 }
 
 inline const cl::Context& CurrentContext() {
@@ -301,13 +306,16 @@ inline void ClipInit(ComputeDeviceType preferredType = GPU,
   ClipInit(devices, valueType, errFn);
 }
 
+inline i32 EnqueuesPerFinish() { return detail::enqueuesPerFinish(); }
+inline void SetEnqueuesPerFinish(i32 n) { detail::enqueuesPerFinish() = n; }
+  
 inline void Enqueue(cl::Kernel& k,
                     cl::NDRange offset,
                     cl::NDRange itemRange,
                     cl::NDRange groupRange) {
   static i32 counter = 0;
   CurrentQueue().enqueueNDRangeKernel(k, offset, itemRange, groupRange);
-  if (++counter%1 == 0) {
+  if (++counter%EnqueuesPerFinish() == 0) {
     CurrentQueue().finish();
   }
 }
