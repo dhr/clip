@@ -9,17 +9,20 @@
 namespace clip {
 namespace detail {
 
-typedef std::pair< ImageBufferType,
+typedef std::pair< std::pair<ImageBufferType, ValueType>,
                    std::pair<i32, i32> > BufferCacheKey;
 
 inline BufferCacheKey MakeCacheKey(ImageBufferType type,
+                                   ValueType valType,
                                    i32 width,
                                    i32 height) {
-  return std::make_pair(type, std::make_pair(width, height));
+  return std::make_pair(std::make_pair(type, valType),
+                        std::make_pair(width, height));
 }
 
 inline BufferCacheKey MakeCacheKey(ImageBufferImpl *impl) {
-  return MakeCacheKey(impl->type(), impl->paddedWidth(), impl->paddedHeight());
+  return MakeCacheKey(impl->type(), impl->valType(),
+                      impl->paddedWidth(), impl->paddedHeight());
 }
 
 class BufferCache {
@@ -53,13 +56,14 @@ class BufferCache {
   }
   
   inline ImageBufferImplPtr retrieve(ImageBufferType type,
+                                     ValueType valType,
                                      i32 width,
                                      i32 height,
                                      i32 xAlign,
                                      i32 yAlign) {
     i32 paddedWidth, paddedHeight;
     CalcPaddedSizes(width, height, xAlign, yAlign, &paddedWidth, &paddedHeight);
-    BufferCacheKey key = MakeCacheKey(type, paddedWidth, paddedHeight);
+    BufferCacheKey key = MakeCacheKey(type, valType, paddedWidth, paddedHeight);
     ImageBufferImplPtr p = retrieve(key);
     
     if (!p.get()) return p;

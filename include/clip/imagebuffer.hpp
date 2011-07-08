@@ -29,11 +29,12 @@ class ImageBuffer {
   detail::ImageBufferImplPtr impl_;
   bool cacheable_;
   
-  void initialize(const f32 *data, i32 width, i32 height,
+  void initialize(const f32 *data, i32 width, i32 height, ValueType valType,
                   i32 xAlign, i32 yAlign, ImageBufferType type) {
     using namespace detail;
     ImageBufferImplPtr impl =
-      BufferCache::instance().retrieve(type, width, height, xAlign, yAlign);
+      BufferCache::instance().retrieve(type, valType, width, height,
+                                       xAlign, yAlign);
     
     if (impl.get()) {
       impl_ = impl;
@@ -41,57 +42,84 @@ class ImageBuffer {
     }
     else if (type == Global) {
       impl_ = ImageBufferImplPtr(
-        new GlobalBufferImpl(data, width, height, xAlign, yAlign, 0));
+        new GlobalBufferImpl(data, width, height, valType, xAlign, yAlign, 0));
     }
     else {
       impl_ = ImageBufferImplPtr(
-        new TextureBufferImpl(data, width, height, xAlign, yAlign, 0));
+        new TextureBufferImpl(data, width, height, valType, xAlign, yAlign, 0));
     }
   }
   
  public:
   ImageBuffer() {}
   
-  ImageBuffer(i32 width, i32 height,
+  ImageBuffer(i32 width, i32 height)
+  : cacheable_(true)
+  {
+    initialize(NULL, width, height, CurrentImBufValueType(),
+               DefaultXAlign, DefaultYAlign, DefaultBufferType);
+  }
+  
+  ImageBuffer(i32 width, i32 height, ValueType valType,
               i32 xAlign = DefaultXAlign, i32 yAlign = DefaultYAlign,
-              ImageBufferType type = DefaultBufferType) {
-    initialize(NULL, width, height, xAlign, yAlign, type);
+              ImageBufferType type = DefaultBufferType, bool cacheable = true)
+  : cacheable_(cacheable)
+  {
+    initialize(NULL, width, height, valType, xAlign, yAlign, type);
   }
   
   explicit
-  ImageBuffer(const ImageData &data,
+  ImageBuffer(const ImageData &data)
+  : cacheable_(true)
+  {
+    initialize(&data.data()[0], data.width(), data.height(),
+               CurrentImBufValueType(),
+               DefaultXAlign, DefaultYAlign, DefaultBufferType);
+  }
+  
+  explicit
+  ImageBuffer(const ImageData &data, ValueType valType,
               i32 xAlign = DefaultXAlign, i32 yAlign = DefaultYAlign,
               ImageBufferType type = DefaultBufferType, bool cacheable = true)
   : cacheable_(cacheable)
   {
-    initialize(&data.data()[0], data.width(), data.height(),
+    initialize(&data.data()[0], data.width(), data.height(), valType,
                xAlign, yAlign, type);
   }
   
-  ImageBuffer(const f32* data, i32 width, i32 height,
+  ImageBuffer(const f32* data, i32 width, i32 height)
+  : cacheable_(true)
+  {
+    initialize(data, width, height, CurrentImBufValueType(),
+               DefaultXAlign, DefaultYAlign, DefaultBufferType);
+  }
+  
+  ImageBuffer(const f32* data, i32 width, i32 height, ValueType valType,
               i32 xAlign = DefaultXAlign, i32 yAlign = DefaultYAlign,
               ImageBufferType type = DefaultBufferType, bool cacheable = true)
   : cacheable_(cacheable)
   {
-    initialize(data, width, height, xAlign, yAlign, type);
+    initialize(data, width, height, valType, xAlign, yAlign, type);
   }
   
-  ImageBuffer(cl::Buffer data, i32 width, i32 height,
+  ImageBuffer(cl::Buffer data, i32 width, i32 height, ValueType valType,
               i32 xAlign = DefaultXAlign, i32 yAlign = DefaultYAlign,
               bool cacheable = false)
   : cacheable_(cacheable)
   {
     impl_ = detail::ImageBufferImplPtr(
-      new detail::GlobalBufferImpl(data, width, height, xAlign, yAlign));
+      new detail::GlobalBufferImpl(data, width, height, valType,
+                                   xAlign, yAlign));
   }
   
-  ImageBuffer(cl::Image2D data, i32 width, i32 height,
+  ImageBuffer(cl::Image2D data, i32 width, i32 height, ValueType valType,
               i32 xAlign = DefaultXAlign, i32 yAlign = DefaultYAlign,
               bool cacheable = false)
   : cacheable_(cacheable)
   {
     impl_ = detail::ImageBufferImplPtr(
-      new detail::TextureBufferImpl(data, width, height, xAlign, yAlign));
+      new detail::TextureBufferImpl(data, width, height, valType,
+                                    xAlign, yAlign));
   }
   
   ~ImageBuffer() {
@@ -122,7 +150,7 @@ class ImageBuffer {
   }
   
   inline ImageBuffer operator~() const {
-    return ImageBuffer(impl_->width(), impl_->height(),
+    return ImageBuffer(impl_->width(), impl_->height(), impl_->valType(),
                        impl_->xAlign(), impl_->yAlign(),
                        impl_->type());
   }

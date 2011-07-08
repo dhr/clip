@@ -5,6 +5,7 @@
 #include <iostream>
 #include <map>
 #include <stdexcept>
+#include <sstream>
 #include <vector>
 #include <tr1/functional>
 
@@ -19,6 +20,7 @@
 #include <cl.hpp>
 
 #include "clip/basictypes.hpp"
+#include "clip/imagebuffertypes.hpp"
 #include "clip/kernels.hpp"
 
 namespace clip {
@@ -28,6 +30,28 @@ enum ComputeDeviceType {
   GPU = CL_DEVICE_TYPE_GPU,
   Accelerator = CL_DEVICE_TYPE_ACCELERATOR
 };
+
+enum ValueType {
+  Int8,
+  Float16,
+  Float32
+};
+
+i32 SizeofValueType(ValueType type) {
+  switch (type) {
+    case Int8:
+      return 1;
+      
+    case Float16:
+      return 2;
+    
+    case Float32:
+      return 4;
+    
+    default:
+      throw std::invalid_argument("Unrecognized value type");
+  }
+}
 
 typedef i32 ContextID;
 
@@ -73,6 +97,11 @@ inline cl::CommandQueue& queue() {
   return queue;
 }
 
+inline ValueType& imageBufferValueType() {
+  static ValueType imageBufferValueType;
+  return imageBufferValueType;
+}
+
 }
 
 inline const cl::Context& CurrentContext() {
@@ -87,11 +116,19 @@ inline const cl::CommandQueue& CurrentQueue() {
   return detail::queue();
 }
 
-inline cl::Device CurrentDevice() {
-  return CurrentQueue().getInfo<CL_QUEUE_DEVICE>();
+inline ValueType CurrentImBufValueType() {
+  return detail::imageBufferValueType();
 }
 
-inline const ComputeDeviceType CurrentDeviceType() {
+inline i32 CurrentImBufValueTypeSize() {
+  return SizeofValueType(CurrentImBufValueType());
+}
+
+inline const cl::Device& CurrentDevice() {
+  return detail::devices()[0];
+}
+
+inline ComputeDeviceType CurrentDeviceType() {
   cl::Device device = CurrentDevice();
   return ComputeDeviceType(device.getInfo<CL_DEVICE_TYPE>());
 }
@@ -100,8 +137,31 @@ inline void AddProgram(const std::string& progName, cl::Program& program) {
   std::map<std::string, cl::Program>& programs = detail::programs();
   programs[progName] = program;
 
-  std::string options("-cl-strict-aliasing -cl-fast-relaxed-math");
-  program.build(detail::devices(), options.c_str());
+  std::stringstream ss;
+  
+  switch (CurrentImBufValueType()) {
+    case Int8:
+      ss << "-D IMVAL_CHAR ";
+      ss << "-D IMVAL_TYPE=char ";
+      ss << "-D IMVAL_UNIT=64.f ";
+      ss << "-D IMVAL_MIN=-128.f ";
+      ss << "-D IMVAL_MAX=127.f ";
+      break;
+      
+    case Float16:
+      ss << "-D IMVAL_HALF ";
+      break;
+      
+    case Float32:
+      ss << "-D IMVAL_FLOAT ";
+      break;
+    
+    default:
+      throw std::logic_error("Unrecognized value type");
+  }
+  
+  ss << "-cl-strict-aliasing -cl-fast-relaxed-math";
+  program.build(detail::devices(), ss.str().c_str());
   
   std::vector<cl::Kernel> newKernels;
   program.createKernels(&newKernels);
@@ -125,7 +185,7 @@ inline cl::Program GetProgram(const std::string& name) {
   if (detail::programs().count(name) > 0)
     return detail::programs()[name];
   
-  throw std::invalid_argument("Program \"" + name + "\" not found.");
+  throw std::invalid_argument("Program \"" + name + "\" not found");
 }
 
 inline bool HasKernel(const std::string& name) {
@@ -137,7 +197,7 @@ inline cl::Kernel& GetKernel(const std::string& name) {
   if (HasKernel(name))
     return cache[name];
     
-  throw std::invalid_argument("Kernel \"" + name + "\" not found.");
+  throw std::invalid_argument("Kernel \"" + name + "\" not found");
 }
 
 class CachedKernel {
@@ -164,13 +224,15 @@ inline void AddInitClient(std::tr1::function<void ()> init) {
   detail::initClients().push_back(init);
 }
 
-inline void ClipInit(cl::Context context, cl::CommandQueue queue) {
+inline void ClipInit(cl::Context context, cl::CommandQueue queue,
+                     ValueType valueType) {
   detail::programs().clear();
   
   detail::context() = context;
   ++detail::contextID();
   
   detail::queue() = queue;
+  detail::imageBufferValueType() = valueType;
   
   AddProgram("basic", BasicKernels());
   AddProgram("improc", ImProcKernels());
@@ -189,23 +251,27 @@ inline void ClipInit(cl::Context context, cl::CommandQueue queue) {
 #endif
 
 inline void ClipInit(const std::vector<cl::Device>& devices,
+                     ValueType valueType = Float16,
                      void (*errFn)(const char*, const void*, size_t, void*)
                        = CLIP_DEFAULT_NOTIFICATION_FUNCTION) {
-  cl::Context context(devices, NULL, errFn);
-  cl::CommandQueue queue = cl::CommandQueue(context, devices[0]);
+  detail::devices() = devices;
+  cl::Context context(detail::devices(), NULL, errFn);
+  cl::CommandQueue queue = cl::CommandQueue(context, CurrentDevice());
   
-  ClipInit(context, queue);
+  ClipInit(context, queue, valueType);
 }
 
 inline void ClipInit(cl::Device device,
+                     ValueType valueType = Float16,
                      void (*errFn)(const char*, const void*, size_t, void*)
                        = CLIP_DEFAULT_NOTIFICATION_FUNCTION) {
   std::vector<cl::Device> devices;
   devices.push_back(device);
-  ClipInit(devices, errFn);
+  ClipInit(devices, valueType, errFn);
 }
 
 inline void ClipInit(ComputeDeviceType preferredType = GPU,
+                     ValueType valueType = Float16,
                      void (*errFn)(const char*, const void*, size_t, void*)
                        = CLIP_DEFAULT_NOTIFICATION_FUNCTION) {
   std::vector<cl::Platform> platforms;
@@ -214,7 +280,7 @@ inline void ClipInit(ComputeDeviceType preferredType = GPU,
 	cl::Platform::get(&platforms);
   
   if (platforms.size() == 0)
-    throw std::runtime_error("No OpenCL platforms found.");
+    throw std::runtime_error("No OpenCL platforms found");
   
   std::vector<cl::Platform>::iterator it, end;
   for (it = platforms.begin(), end = platforms.end(); it != end; ++it) {
@@ -229,10 +295,10 @@ inline void ClipInit(ComputeDeviceType preferredType = GPU,
     }
     
     if (devices.size() == 0)
-      throw std::runtime_error("Couldn't find any OpenCL devices.");
+      throw std::runtime_error("Couldn't find any OpenCL devices");
   }
   
-  ClipInit(devices, errFn);
+  ClipInit(devices, valueType, errFn);
 }
 
 inline void Enqueue(cl::Kernel& k,
@@ -241,7 +307,7 @@ inline void Enqueue(cl::Kernel& k,
                     cl::NDRange groupRange) {
   static i32 counter = 0;
   CurrentQueue().enqueueNDRangeKernel(k, offset, itemRange, groupRange);
-  if (++counter%5000 == 0) {
+  if (++counter%1 == 0) {
     CurrentQueue().finish();
   }
 }

@@ -249,7 +249,7 @@ public:
 
 //! \cond DOXYGEN_DETAIL
 #if !defined(__CL_USER_OVERRIDE_ERROR_STRINGS)
-#define __GET_DEVICE_INFO_ERR               __ERR_STR(clgetDeviceInfo)
+#define __GET_DEVICE_INFO_ERR               __ERR_STR(clGetDeviceInfo)
 #define __GET_PLATFORM_INFO_ERR             __ERR_STR(clGetPlatformInfo)
 #define __GET_DEVICE_IDS_ERR                __ERR_STR(clGetDeviceIDs)
 #define __GET_PLATFORM_IDS_ERR              __ERR_STR(clGetPlatformIDs)

@@ -25,22 +25,21 @@ class TextureBufferImpl : public ImageBufferImpl {
   }
   
  public:
-  TextureBufferImpl() : ImageBufferImpl(Texture, &buffer_, 0, 0, 0, 0) {}
+  TextureBufferImpl()
+  : ImageBufferImpl(Texture, Float32, &buffer_, 0, 0, 0, 0) {}
   
-  TextureBufferImpl(cl::Image2D data,
-                    i32 width, i32 height,
+  TextureBufferImpl(cl::Image2D data, i32 width, i32 height, ValueType valType,
                     i32 xAlign, i32 yAlign)
-  : ImageBufferImpl(Texture, &buffer_, width, height, xAlign, yAlign),
-    buffer_(data) {
+  : ImageBufferImpl(Texture, valType, &buffer_, width, height, xAlign, yAlign),
+    buffer_(data)
+  {
     initPaddingValues();
     // FIXME: Ensure the data we've been passed conforms with the dimensions
   }
   
-  TextureBufferImpl(const f32 *data,
-                    i32 width, i32 height,
-                    i32 xAlign, i32 yAlign,
-                    cl_mem_flags flags)
-  : ImageBufferImpl(Texture, &buffer_, width, height, xAlign, yAlign)
+  TextureBufferImpl(const f32 *data, i32 width, i32 height, ValueType valType,
+                    i32 xAlign, i32 yAlign, cl_mem_flags flags)
+  : ImageBufferImpl(Texture, valType, &buffer_, width, height, xAlign, yAlign)
   {
     if (data != NULL)
       initBufferFromFloatData(data, flags);

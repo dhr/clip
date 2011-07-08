@@ -20,6 +20,7 @@ inline void CalcPaddedSizes(i32 width, i32 height,
 class ImageBufferImpl {
  protected:
   ImageBufferType type_;
+  ValueType valType_;
   cl::Memory* memory_;
   i32 width_;
   i32 height_;
@@ -30,10 +31,11 @@ class ImageBufferImpl {
   cl::NDRange itemRange_;
   
   ImageBufferImpl(ImageBufferType type,
+                  ValueType valType,
                   cl::Memory* memory,
                   i32 width, i32 height,
                   i32 xAlign, i32 yAlign)
-  : type_(type), memory_(memory),
+  : type_(type), valType_(valType), memory_(memory),
     width_(width), height_(height),
     xAlign_(xAlign), yAlign_(yAlign) {}
   
@@ -66,7 +68,7 @@ class ImageBufferImpl {
  public:
   virtual ~ImageBufferImpl() {};
   
-  virtual void fetchData(f32 *data) const = 0;
+  virtual void fetchData(f32* data) const = 0;
   
   inline const cl::Memory &mem() { return *memory_; }
   inline const cl::NDRange &offset() { return cl::NullRange; }
@@ -77,6 +79,7 @@ class ImageBufferImpl {
   virtual void copyInto(ImageBufferImpl *dest) const = 0;
   
   inline ImageBufferType type() { return type_; }
+  inline ValueType valType() { return valType_; }
   inline i32 width() const { return width_; }
   inline i32 height() const { return height_; }
   inline i32 paddedWidth() const { return paddedWidth_; }

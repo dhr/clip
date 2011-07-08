@@ -15,7 +15,7 @@ namespace clip {
 template<typename InIterator, typename OutIterator>
 void LoadFilters(InIterator begin, InIterator end, OutIterator output) {
   for (InIterator i = begin; i != end; ++i)
-    *output++ = ImageBuffer(*i, 1, 1, Global, false);
+    *output++ = ImageBuffer(*i, Float32, 1, 1, Global, false);
 }
 
 template<typename InIterator, typename OutIterator>
@@ -150,7 +150,7 @@ inline cl::Buffer& filterMemory() {
 inline ImageBuffer Filter(const ImageBuffer& image, const ImageData& filter,
                           ImageBuffer o) {
   ImageBuffer filterBuffer(detail::filterMemory(),
-                           filter.width(), filter.height(),
+                           filter.width(), filter.height(), Float32,
                            (DefaultBufferType == Texture)*3 + 1, 1);
   filterBuffer.sendData(filter);
   return Filter(image, filterBuffer, o);

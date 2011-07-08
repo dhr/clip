@@ -65,7 +65,7 @@ kernel void filter_cpu(global imval* image, constant float *filter,
   store_imval(sum4.x + sum4.y + sum4.z + sum4.w, out_indx, output);
 }
 
-kernel void filter_gpu(global imval4* image,
+kernel void filter_gpu(global imval* image,
                        local float *im_cache,
                        constant float *filter,
                        local float *filt_cache,
@@ -112,12 +112,12 @@ kernel void filter_gpu(global imval4* image,
   
   barrier(CLK_LOCAL_MEM_FENCE);
   
-  vstore4(load_imval(im_indx, image), local_x, local_row_base);
+  vstore4(load_imval4(im_indx, image), local_x, local_row_base);
   
   if (local_x - group_width >= -n_lr_apron_quads) {
     int quad_offs = -group_width;
     int im_indx_off = (im_x + quad_offs >= 0 ? quad_offs : -im_x);
-    vstore4(load_imval(im_indx + im_indx_off, image),
+    vstore4(load_imval4(im_indx + im_indx_off, image),
             local_x + quad_offs, local_row_base);
   }
   
@@ -125,7 +125,7 @@ kernel void filter_gpu(global imval4* image,
     int quad_offs = group_width;
     int im_indx_off = (im_x + quad_offs < im_width ?
                        quad_offs : group_width - local_x - 1);
-    vstore4(load_imval(im_indx + im_indx_off, image),
+    vstore4(load_imval4(im_indx + im_indx_off, image),
             local_x + quad_offs, local_row_base);
   }
   
@@ -134,14 +134,14 @@ kernel void filter_gpu(global imval4* image,
     int local_quad_offs = -group_height*im_cache_quad_width + local_x;
     int im_indx_off =
     (im_y - group_height >= 0 ? im_quad_offs : -im_y*im_width);
-    vstore4(load_imval(im_indx + im_indx_off, image),
+    vstore4(load_imval4(im_indx + im_indx_off, image),
             local_quad_offs, local_row_base);
     
     if (local_x - group_width >= -n_lr_apron_quads) {
       int quad_offs = -group_width;
       int new_im_indx_off = im_indx_off +
       (im_x + quad_offs >= 0 ? quad_offs : -im_x);
-      vstore4(load_imval(im_indx + new_im_indx_off, image),
+      vstore4(load_imval4(im_indx + new_im_indx_off, image),
               local_quad_offs + quad_offs, local_row_base);
     }
     
@@ -150,7 +150,7 @@ kernel void filter_gpu(global imval4* image,
       int new_im_indx_off = im_indx_off +
       (im_x + quad_offs < im_width ?
        quad_offs : group_width - local_x - 1);
-      vstore4(load_imval(im_indx + new_im_indx_off, image),
+      vstore4(load_imval4(im_indx + new_im_indx_off, image),
               local_quad_offs + quad_offs, local_row_base);
     }
   }
@@ -160,23 +160,23 @@ kernel void filter_gpu(global imval4* image,
     int local_quad_offs = group_height*im_cache_quad_width + local_x;
     int im_indx_off = (im_y + group_height < im_height ?
                        im_quad_offs : (group_height - 1 - local_y)*im_width);
-    vstore4(load_imval(im_indx + im_indx_off, image),
+    vstore4(load_imval4(im_indx + im_indx_off, image),
             local_quad_offs, local_row_base);
     
     if (local_x - group_width >= -n_lr_apron_quads) {
       int quad_offs = -group_width;
       int new_im_indx_off = im_indx_off +
-      (im_x + quad_offs >= 0 ? quad_offs : -im_x);
-      vstore4(load_imval(im_indx + new_im_indx_off, image),
+        (im_x + quad_offs >= 0 ? quad_offs : -im_x);
+      vstore4(load_imval4(im_indx + new_im_indx_off, image),
               local_quad_offs + quad_offs, local_row_base);
     }
     
     if (local_x < n_lr_apron_quads) {
       int quad_offs = group_width;
       int new_im_indx_off = im_indx_off +
-      (im_x + quad_offs < im_width ?
-       quad_offs : group_width - local_x - 1);
-      vstore4(load_imval(im_indx + new_im_indx_off, image),
+        (im_x + quad_offs < im_width ?
+         quad_offs : group_width - local_x - 1);
+      vstore4(load_imval4(im_indx + new_im_indx_off, image),
               local_quad_offs + quad_offs, local_row_base);
     }
   }
@@ -186,8 +186,7 @@ kernel void filter_gpu(global imval4* image,
   float4 sum = 0.f;
   for (int filt_y = 0; filt_y < filt_height; filt_y++) {
     int filt_row_base = filt_y*filt_width;
-    int im_cache_row_base =
-    (filt_y + local_y)*im_cache_width + apron_padding;
+    int im_cache_row_base = (filt_y + local_y)*im_cache_width + apron_padding;
     
     for (int filt_x = 0; filt_x < filt_width; filt_x++) {
       int im_cache_indx = im_cache_row_base + filt_x + local_x;
@@ -256,8 +255,8 @@ kernel void filter_sparse_cpu(global imval* image,
   store_imval(sum, out_indx, output);
 }
 
-kernel void filter_sparse_gpu(global imval4* image,
-                              local float *im_cache,
+kernel void filter_sparse_gpu(global imval* image,
+                              local float* im_cache,
                               constant sparse_value *filter,
                               local sparse_value *filt_cache,
                               int filt_width,
@@ -301,12 +300,12 @@ kernel void filter_sparse_gpu(global imval4* image,
   
   barrier(CLK_LOCAL_MEM_FENCE);
   
-  vstore4(load_imval(im_indx, image), local_x, local_row_base);
+  vstore4(load_imval4(im_indx, image), local_x, local_row_base);
   
   if (local_x - group_width >= -n_lr_apron_quads) {
     int quad_offs = -group_width;
     int im_indx_off = (im_x + quad_offs >= 0 ? quad_offs : -im_x);
-    vstore4(load_imval(im_indx + im_indx_off, image),
+    vstore4(load_imval4(im_indx + im_indx_off, image),
             local_x + quad_offs, local_row_base);
   }
   
@@ -314,7 +313,7 @@ kernel void filter_sparse_gpu(global imval4* image,
     int quad_offs = group_width;
     int im_indx_off = (im_x + quad_offs < im_width ?
                        quad_offs : group_width - local_x - 1);
-    vstore4(load_imval(im_indx + im_indx_off, image),
+    vstore4(load_imval4(im_indx + im_indx_off, image),
             local_x + quad_offs, local_row_base);
   }
   
@@ -323,14 +322,14 @@ kernel void filter_sparse_gpu(global imval4* image,
     int local_quad_offs = -group_height*im_cache_quad_width + local_x;
     int im_indx_off =
     (im_y - group_height >= 0 ? im_quad_offs : -im_y*im_width);
-    vstore4(load_imval(im_indx + im_indx_off, image),
+    vstore4(load_imval4(im_indx + im_indx_off, image),
             local_quad_offs, local_row_base);
     
     if (local_x - group_width >= -n_lr_apron_quads) {
       int quad_offs = -group_width;
       int new_im_indx_off = im_indx_off +
       (im_x + quad_offs >= 0 ? quad_offs : -im_x);
-      vstore4(load_imval(im_indx + new_im_indx_off, image),
+      vstore4(load_imval4(im_indx + new_im_indx_off, image),
               local_quad_offs + quad_offs, local_row_base);
     }
     
@@ -339,7 +338,7 @@ kernel void filter_sparse_gpu(global imval4* image,
       int new_im_indx_off = im_indx_off +
       (im_x + quad_offs < im_width ?
        quad_offs : group_width - local_x - 1);
-      vstore4(load_imval(im_indx + new_im_indx_off, image),
+      vstore4(load_imval4(im_indx + new_im_indx_off, image),
               local_quad_offs + quad_offs, local_row_base);
     }
   }
@@ -350,23 +349,23 @@ kernel void filter_sparse_gpu(global imval4* image,
     int im_indx_off =
     (im_y + group_height < im_height ?
      im_quad_offs : (group_height - 1 - local_y)*im_width);
-    vstore4(load_imval(im_indx + im_indx_off, image),
+    vstore4(load_imval4(im_indx + im_indx_off, image),
             local_quad_offs, local_row_base);
     
     if (local_x - group_width >= -n_lr_apron_quads) {
       int quad_offs = -group_width;
       int new_im_indx_off = im_indx_off +
       (im_x + quad_offs >= 0 ? quad_offs : -im_x);
-      vstore4(load_imval(im_indx + new_im_indx_off, image),
+      vstore4(load_imval4(im_indx + new_im_indx_off, image),
               local_quad_offs + quad_offs, local_row_base);
     }
     
     if (local_x < n_lr_apron_quads) {
       int quad_offs = group_width;
-      int new_im_indx_off = im_indx_off +
-      (im_x + quad_offs < im_width ?
-       quad_offs : group_width - local_x - 1);
-      vstore4(load_imval(im_indx + new_im_indx_off, image),
+      int new_im_indx_off =
+        im_indx_off + (im_x + quad_offs < im_width ?
+                       quad_offs : group_width - local_x - 1);
+      vstore4(load_imval4(im_indx + new_im_indx_off, image),
               local_quad_offs + quad_offs, local_row_base);
     }
   }
