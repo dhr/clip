@@ -15,13 +15,13 @@ namespace clip {
 template<typename InIterator, typename OutIterator>
 void LoadFilters(InIterator begin, InIterator end, OutIterator output) {
   for (InIterator i = begin; i != end; ++i)
-    *output++ = ImageBuffer(*i, Float32, 1, 1, Global, false);
+    *output++ = ImageBuffer(*i, CurrentFilterValueType(), 1, 1, Global, false);
 }
 
 template<typename InIterator, typename OutIterator>
 void LoadSparseFilters(InIterator begin, InIterator end, OutIterator output) {
   for (InIterator i = begin; i != end; ++i)
-    *output++ = SparseImageBuffer(*i);
+    *output++ = SparseImageBuffer(*i, CurrentFilterValueType());
 }
 
 inline ImageBuffer Filter(const ImageBuffer& image, const ImageBuffer& filter,
@@ -166,7 +166,8 @@ inline ImageBuffer Filter(const ImageBuffer& image,
   // This reserves space for a filter with maximum size 10000 bytes
   SparseImageBuffer filterBuffer(detail::filterMemory(),
                                  filter.width(), filter.height(),
-                                 filter.numElems());
+                                 filter.numElems(),
+                                 CurrentFilterValueType());
   filterBuffer.sendData(filter);
   return Filter(image, filterBuffer, o);
 }

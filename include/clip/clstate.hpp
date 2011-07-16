@@ -32,16 +32,12 @@ enum ComputeDeviceType {
 };
 
 enum ValueType {
-  Int8,
   Float16,
   Float32
 };
 
 i32 SizeofValueType(ValueType type) {
   switch (type) {
-    case Int8:
-      return 1;
-      
     case Float16:
       return 2;
     
@@ -55,9 +51,6 @@ i32 SizeofValueType(ValueType type) {
 
 ValueType ValueTypeForBitDepth(i32 depth) {
   switch (depth) {
-    case 8:
-      return Int8;
-    
     case 16:
       return Float16;
     
@@ -118,6 +111,11 @@ inline ValueType& imageBufferValueType() {
   return imageBufferValueType;
 }
 
+inline ValueType& filterValueType() {
+  static ValueType imageBufferValueType;
+  return imageBufferValueType;
+}
+
 inline i32& enqueuesPerFinish() {
   static i32 enqueuesPerFinish = 5000;
   return enqueuesPerFinish;
@@ -141,8 +139,8 @@ inline ValueType CurrentImBufValueType() {
   return detail::imageBufferValueType();
 }
 
-inline i32 CurrentImBufValueTypeSize() {
-  return SizeofValueType(CurrentImBufValueType());
+inline ValueType CurrentFilterValueType() {
+  return detail::filterValueType();
 }
 
 inline const cl::Device& CurrentDevice() {
@@ -154,21 +152,16 @@ inline ComputeDeviceType CurrentDeviceType() {
   return ComputeDeviceType(device.getInfo<CL_DEVICE_TYPE>());
 }
 
-inline void AddProgram(const std::string& progName, cl::Program& program) {
+inline void AddProgram(const std::string& progName, cl::Program& program,
+                       const std::string& options = "") {
   std::map<std::string, cl::Program>& programs = detail::programs();
+  if (programs.find(progName) != programs.end())
+    throw std::invalid_argument("Program name already in use");
   programs[progName] = program;
 
   std::stringstream ss;
   
   switch (CurrentImBufValueType()) {
-    case Int8:
-      ss << "-D IMVAL_CHAR ";
-      ss << "-D IMVAL_TYPE=char ";
-      ss << "-D IMVAL_UNIT=64.f ";
-      ss << "-D IMVAL_MIN=-128.f ";
-      ss << "-D IMVAL_MAX=127.f ";
-      break;
-      
     case Float16:
       ss << "-D IMVAL_HALF ";
       break;
@@ -181,8 +174,21 @@ inline void AddProgram(const std::string& progName, cl::Program& program) {
       throw std::logic_error("Unrecognized value type");
   }
   
-  ss << "-cl-strict-aliasing -cl-fast-relaxed-math";
-  program.build(detail::devices(), ss.str().c_str());
+  switch (CurrentFilterValueType()) {
+    case Float16:
+      ss << "-D FILTVAL_HALF ";
+      break;
+      
+    case Float32:
+      ss << "-D FILTVAL_FLOAT ";
+      break;
+    
+    default:
+      throw std::logic_error("Unrecognized value type");
+  }
+  
+  ss << "-cl-strict-aliasing -cl-fast-relaxed-math ";
+  program.build(detail::devices(), (ss.str() + options).c_str());
   
   std::vector<cl::Kernel> newKernels;
   program.createKernels(&newKernels);
@@ -195,7 +201,8 @@ inline void AddProgram(const std::string& progName, cl::Program& program) {
   }
 }
 
-inline cl::Program AddProgram(const std::string& name, const std::string& src) {
+inline cl::Program AddProgram(const std::string& name, const std::string& src,
+                              const std::string& options = "") {
   cl::Program::Sources sources(1, std::make_pair(src.c_str(), src.size()));
   cl::Program program(detail::context(), sources);
   AddProgram(name, program);
@@ -203,8 +210,10 @@ inline cl::Program AddProgram(const std::string& name, const std::string& src) {
 }
 
 inline cl::Program GetProgram(const std::string& name) {
-  if (detail::programs().count(name) > 0)
-    return detail::programs()[name];
+  std::map<std::string, cl::Program>::iterator it;
+  it = detail::programs().find(name);
+  if (it != detail::programs().end())
+    return it->second;
   
   throw std::invalid_argument("Program \"" + name + "\" not found");
 }
@@ -246,14 +255,16 @@ inline void AddInitClient(std::tr1::function<void ()> init) {
 }
 
 inline void ClipInit(cl::Context context, cl::CommandQueue queue,
-                     ValueType valueType) {
+                     ValueType imValType = Float16,
+                     ValueType filtValType = Float16) {
   detail::programs().clear();
   
   detail::context() = context;
   ++detail::contextID();
   
   detail::queue() = queue;
-  detail::imageBufferValueType() = valueType;
+  detail::imageBufferValueType() = imValType;
+  detail::filterValueType() = filtValType;
   
   AddProgram("basic", BasicKernels());
   AddProgram("improc", ImProcKernels());
@@ -272,27 +283,30 @@ inline void ClipInit(cl::Context context, cl::CommandQueue queue,
 #endif
 
 inline void ClipInit(const std::vector<cl::Device>& devices,
-                     ValueType valueType = Float16,
+                     ValueType imValType = Float16,
+                     ValueType filtValType = Float16,
                      void (*errFn)(const char*, const void*, size_t, void*)
                        = CLIP_DEFAULT_NOTIFICATION_FUNCTION) {
   detail::devices() = devices;
   cl::Context context(detail::devices(), NULL, errFn);
   cl::CommandQueue queue = cl::CommandQueue(context, CurrentDevice());
   
-  ClipInit(context, queue, valueType);
+  ClipInit(context, queue, imValType, filtValType);
 }
 
 inline void ClipInit(cl::Device device,
-                     ValueType valueType = Float16,
+                     ValueType imValType = Float16,
+                     ValueType filtValType = Float16,
                      void (*errFn)(const char*, const void*, size_t, void*)
                        = CLIP_DEFAULT_NOTIFICATION_FUNCTION) {
   std::vector<cl::Device> devices;
   devices.push_back(device);
-  ClipInit(devices, valueType, errFn);
+  ClipInit(devices, imValType, filtValType, errFn);
 }
 
 inline void ClipInit(ComputeDeviceType preferredType = GPU,
-                     ValueType valueType = Float16,
+                     ValueType imValType = Float16,
+                     ValueType filtValType = Float16,
                      void (*errFn)(const char*, const void*, size_t, void*)
                        = CLIP_DEFAULT_NOTIFICATION_FUNCTION) {
   std::vector<cl::Platform> platforms;
@@ -319,7 +333,7 @@ inline void ClipInit(ComputeDeviceType preferredType = GPU,
       throw std::runtime_error("Couldn't find any OpenCL devices");
   }
   
-  ClipInit(devices, valueType, errFn);
+  ClipInit(devices, imValType, filtValType, errFn);
 }
 
 inline i32 EnqueuesPerFinish() { return detail::enqueuesPerFinish(); }

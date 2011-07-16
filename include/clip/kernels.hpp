@@ -14,6 +14,7 @@ inline const char* BasicKernels() {
 inline const char* ImProcKernels() {
   static const char* kernels =
     #include "kernels/util.cl"
+    #include "kernels/improcutil.cl"
     #include "kernels/improc.cl"
     ;
   return kernels;

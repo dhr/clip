@@ -8,19 +8,19 @@
 namespace clip {
 namespace detail {
 
-void float2imval(const cl::Buffer& floats, i32 n, cl::Buffer& imvals) {
-  static CachedKernel cache("float2imval");
+void floatToHalf(const cl::Buffer& floats, i32 n, cl::Buffer& halfs) {
+  static CachedKernel cache("float2half");
   cl::Kernel& kernel = cache.get();
   kernel.setArg(0, floats);
-  kernel.setArg(1, imvals);
+  kernel.setArg(1, halfs);
   CurrentQueue().enqueueNDRangeKernel(kernel, cl::NullRange,
                                       cl::NDRange(n, 1), cl::NullRange);
 }
 
-void imval2float(const cl::Buffer& imvals, i32 n, cl::Buffer& floats) {
-  static CachedKernel cache("imval2float");
+void halfToFloat(const cl::Buffer& halfs, i32 n, cl::Buffer& floats) {
+  static CachedKernel cache("half2float");
   cl::Kernel& kernel = cache.get();
-  kernel.setArg(0, imvals);
+  kernel.setArg(0, halfs);
   kernel.setArg(1, floats);
   CurrentQueue().enqueueNDRangeKernel(kernel, cl::NullRange,
                                       cl::NDRange(n, 1), cl::NullRange);
@@ -40,10 +40,10 @@ class GlobalBufferImpl : public ImageBufferImpl {
     buffer_ = cl::Buffer(CurrentContext(), flags, n*sizeof(f32),
                          &padded.data()[0]);
     
-    if (valType_ != Float32) {
+    if (valType_ == Float16) {
       cl::Buffer imvalBuffer(CurrentContext(), 0,
                              n*SizeofValueType(valType_));
-      float2imval(buffer_, n, imvalBuffer);
+      floatToHalf(buffer_, n, imvalBuffer);
       buffer_ = imvalBuffer;
     }
   }
@@ -84,9 +84,9 @@ class GlobalBufferImpl : public ImageBufferImpl {
     cl::Buffer sourceBuf;
     if (valType_ == Float32)
       sourceBuf = buffer_;
-    else {
+    else if (valType_ == Float16) {
       sourceBuf = cl::Buffer(CurrentContext(), 0, nBytes);
-      imval2float(buffer_, n, sourceBuf);
+      halfToFloat(buffer_, n, sourceBuf);
     }
     
     CurrentQueue().enqueueReadBuffer(sourceBuf, true, 0, nBytes, &temp[0]);
@@ -113,9 +113,9 @@ class GlobalBufferImpl : public ImageBufferImpl {
       return;
     }
     
-    cl::Buffer temp(CurrentContext(), 0, n*sizeof(f32));
-    CurrentQueue().enqueueWriteBuffer(temp, false, 0, n*sizeof(f32), data);
-    float2imval(temp, n, buffer_);
+    cl::Buffer temp(CurrentContext(), CL_MEM_COPY_HOST_PTR,
+                    n*sizeof(f32), const_cast<f32*>(data));
+    floatToHalf(temp, n, buffer_);
   }
   
   void copyInto(ImageBufferImpl *dest) const {

@@ -15,22 +15,25 @@ class SparseImageBuffer {
   SparseImageBuffer() {}
   
   explicit
-  SparseImageBuffer(const SparseImageData &data, cl_mem_flags flags = 0) {
+  SparseImageBuffer(const SparseImageData &data, ValueType valType,
+                    cl_mem_flags flags = 0) {
     impl_ = detail::SparseImageBufferImplPtr(
-      new detail::SparseImageBufferImpl(data, flags));
+      new detail::SparseImageBufferImpl(data, valType, flags));
   }
   
   explicit
-  SparseImageBuffer(const ImageData &data, cl_mem_flags flags = 0) {
+  SparseImageBuffer(const ImageData &data, ValueType valType,
+                    cl_mem_flags flags = 0) {
     SparseImageData sid(data);
     detail::SparseImageBufferImpl* p =
-      new detail::SparseImageBufferImpl(sid, flags);
+      new detail::SparseImageBufferImpl(sid, valType, flags);
     impl_ = detail::SparseImageBufferImplPtr(p);
   }
   
-  SparseImageBuffer(cl::Buffer data, i32 width, i32 height, i32 nelems) {
+  SparseImageBuffer(cl::Buffer data, i32 width, i32 height, i32 nelems,
+                    ValueType valType) {
     impl_ = detail::SparseImageBufferImplPtr(
-      new detail::SparseImageBufferImpl(data, width, height, nelems));
+      new detail::SparseImageBufferImpl(data, width, height, nelems, valType));
   }
   
   void fetchData(SparseValue* data) const {
@@ -58,6 +61,7 @@ class SparseImageBuffer {
   inline i32 width() const { return impl_->width(); }
   inline i32 height() const { return impl_->height(); }
   inline i32 numElems() const { return impl_->numElems(); }
+  inline ValueType valType() const { return impl_->valType(); }
   
   inline bool valid() const { return impl_.get() != NULL && mem()() != NULL; }
 };
