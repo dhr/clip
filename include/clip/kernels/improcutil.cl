@@ -33,7 +33,7 @@ CLIP_STRINGIFY(
     sparse_float sfl;
     sfl.x = sfv.x;
     sfl.y = sfv.y;
-    sfl.val = load(filtval, 0, &sfv.val);
+    sfl.val = vload_half(0, &sfv.val);
     
     return sfl;
   }
