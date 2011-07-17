@@ -117,7 +117,7 @@ inline ValueType& filterValueType() {
 }
 
 inline i32& enqueuesPerFinish() {
-  static i32 enqueuesPerFinish = 5000;
+  static i32 enqueuesPerFinish = 1;
   return enqueuesPerFinish;
 }
 

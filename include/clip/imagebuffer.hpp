@@ -151,8 +151,7 @@ class ImageBuffer {
   
   inline ImageBuffer operator~() const {
     return ImageBuffer(impl_->width(), impl_->height(), impl_->valType(),
-                       impl_->xAlign(), impl_->yAlign(),
-                       impl_->type());
+                       impl_->xAlign(), impl_->yAlign(), impl_->type());
   }
   
   inline ImageBuffer clone() const {
