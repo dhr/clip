@@ -14,6 +14,8 @@
 \n\
 #define vload_sparse_half(off, p) load_sparse_half_helper((p)[(off)])\n\
 #define vload_sparse_float(off, p) ((p)[(off)])\n\
+\n\
+#pragma OPENCL EXTENSION cl_khr_byte_addressable_store : enable\n\
 "
 CLIP_STRINGIFY(
   typedef struct sparse_half {

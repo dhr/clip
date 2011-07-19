@@ -188,7 +188,16 @@ inline void AddProgram(const std::string& progName, cl::Program& program,
   }
   
   ss << "-cl-strict-aliasing -cl-fast-relaxed-math ";
-  program.build(detail::devices(), (ss.str() + options).c_str());
+  
+  try {
+	  program.build(detail::devices(), (ss.str() + options).c_str());
+  }
+  catch (const cl::Error& err) {
+  	const cl::Device& d = CurrentDevice();
+  	std::string buildInfo = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(d);
+  	std::cerr << buildInfo << std::endl;
+  	throw err;
+  }
   
   std::vector<cl::Kernel> newKernels;
   program.createKernels(&newKernels);
