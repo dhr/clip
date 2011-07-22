@@ -1839,6 +1839,7 @@ public:
 };
 #endif
 
+#ifndef NO_GL_INTEROP
 /*! \class BufferGL
  * \brief Memory buffer interface for GL interop.
  */
@@ -1932,6 +1933,7 @@ public:
             __GET_GL_OBJECT_INFO_ERR);
     }
 };
+#endif // NO_GL_INTEROP
 
 /*! \class Image
  * \brief Base class  interface for all images.
@@ -2012,6 +2014,7 @@ public:
     }
 };
 
+#ifndef NO_GL_INTEROP
 /*! \class Image2DGL
  * \brief 2D image interface for GL interop.
  */
@@ -2053,6 +2056,7 @@ public:
         return *this;
     }
 };
+#endif // NO_GL_INTEROP
 
 /*! \class Image3D
  * \brief Image interface for 3D images.
@@ -2096,6 +2100,7 @@ public:
     }
 };
 
+#ifndef NO_GL_INTEROP
 /*! \class Image2DGL
  * \brief 2D image interface for GL interop.
  */
@@ -2137,6 +2142,7 @@ public:
         return *this;
     }
 };
+#endif // NO_GL_INTEROP
 
 /*! \class Sampler
  * \brief Sampler interface for cl_sampler.
