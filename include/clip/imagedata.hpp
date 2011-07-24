@@ -115,19 +115,19 @@ class ImageData {
     return y*width_ + x;
   }
   
-  ImageDataValues &data() { return *data_; }
-  const ImageDataValues &data() const { return *data_; }
+  ImageDataValues& data() { return *data_; }
+  const ImageDataValues& data() const { return *data_; }
   
-  inline f32 &operator()(i32 x, i32 y) {
+  inline f32& operator()(i32 x, i32 y) {
     return (*data_)[index(x, y)];
   }
   
-  const inline f32 &operator()(i32 x, i32 y) const {
+  const inline f32& operator()(i32 x, i32 y) const {
     return (*data_)[index(x, y)];
   }
   
-  inline f32 &operator[](i32 i) { return (*data_)[i]; }
-  const inline f32 &operator[](i32 i) const { return (*data_)[i]; }
+  inline f32& operator[](i32 i) { return (*data_)[i]; }
+  const inline f32& operator[](i32 i) const { return (*data_)[i]; }
   
   ImageData& balance() {
     f32 posSum = 0;
@@ -142,7 +142,7 @@ class ImageData {
     return *this;
   }
   
-  ImageData &normalize() {
+  ImageData& normalize() {
     f32 pos = 0;
     for (i32 i = 0; i < width_*height_; i++)
       if ((*data_)[i] > 0) pos += (*data_)[i];

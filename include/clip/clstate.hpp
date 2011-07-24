@@ -264,8 +264,8 @@ inline void AddInitClient(std::tr1::function<void ()> init) {
 }
 
 inline void ClipInit(cl::Context context, cl::CommandQueue queue,
-                     ValueType imValType = Float16,
-                     ValueType filtValType = Float16) {
+                     ValueType imValType = Float32,
+                     ValueType filtValType = Float32) {
   detail::programs().clear();
   
   detail::context() = context;
@@ -292,8 +292,8 @@ inline void ClipInit(cl::Context context, cl::CommandQueue queue,
 #endif
 
 inline void ClipInit(const std::vector<cl::Device>& devices,
-                     ValueType imValType = Float16,
-                     ValueType filtValType = Float16,
+                     ValueType imValType = Float32,
+                     ValueType filtValType = Float32,
                      void (*errFn)(const char*, const void*, size_t, void*)
                        = CLIP_DEFAULT_NOTIFICATION_FUNCTION) {
   detail::devices() = devices;
@@ -304,8 +304,8 @@ inline void ClipInit(const std::vector<cl::Device>& devices,
 }
 
 inline void ClipInit(cl::Device device,
-                     ValueType imValType = Float16,
-                     ValueType filtValType = Float16,
+                     ValueType imValType = Float32,
+                     ValueType filtValType = Float32,
                      void (*errFn)(const char*, const void*, size_t, void*)
                        = CLIP_DEFAULT_NOTIFICATION_FUNCTION) {
   std::vector<cl::Device> devices;
@@ -313,9 +313,29 @@ inline void ClipInit(cl::Device device,
   ClipInit(devices, imValType, filtValType, errFn);
 }
 
+inline void ClipInit(i32 platformNum, i32 deviceNum,
+                     ValueType imValType = Float32,
+                     ValueType filtValType = Float32,
+                     void (*errFn)(const char*, const void*, size_t, void*)
+                       = CLIP_DEFAULT_NOTIFICATION_FUNCTION) {
+  std::vector<cl::Platform> platforms;
+  cl::Platform::get(&platforms);
+  
+  if (platformNum < 0 || platformNum >= i32(platforms.size()))
+    throw std::invalid_argument("Invalid platform number");
+  
+  std::vector<cl::Device> devices;
+  platforms[platformNum].getDevices(CL_DEVICE_TYPE_ALL, &devices);
+  
+  if (deviceNum < 0 || deviceNum >= i32(devices.size()))
+    throw std::invalid_argument("Invalid device number");
+  
+  ClipInit(devices[deviceNum], imValType, filtValType, errFn);
+}
+
 inline void ClipInit(ComputeDeviceType preferredType = GPU,
-                     ValueType imValType = Float16,
-                     ValueType filtValType = Float16,
+                     ValueType imValType = Float32,
+                     ValueType filtValType = Float32,
                      void (*errFn)(const char*, const void*, size_t, void*)
                        = CLIP_DEFAULT_NOTIFICATION_FUNCTION) {
   std::vector<cl::Platform> platforms;
