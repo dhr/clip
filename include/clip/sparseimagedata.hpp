@@ -32,10 +32,8 @@ class SparseImageData {
   SparseImageData() {}
   
   SparseImageData(i32 width, i32 height, i32 nelems = 0)
-  : data_(SparseImageDataValuesPtr(new SparseImageDataValues())),
-    width_(width), height_(height) {
-    data_->reserve(nelems);
-  }
+  : data_(SparseImageDataValuesPtr(new SparseImageDataValues(nelems))),
+    width_(width), height_(height) {}
   
   SparseImageData(const SparseImageData &other, bool deepCopy = false)
   : width_(other.width_), height_(other.height_)
