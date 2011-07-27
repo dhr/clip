@@ -348,20 +348,17 @@ inline void ClipInit(ComputeDeviceType preferredType = GPU,
   
   std::vector<cl::Platform>::iterator it, end;
   for (it = platforms.begin(), end = platforms.end(); it != end; ++it) {
-    it->getDevices(preferredType, &devices);
-    if (devices.size() != 0) break;
-  }
-  
-  if (devices.size() == 0) {
-    for (it = platforms.begin(), end = platforms.end(); it != end; ++it) {
-      it->getDevices(CL_DEVICE_TYPE_DEFAULT, &devices);
-      if (devices.size() != 0) break;
+    it->getDevices(CL_DEVICE_TYPE_ALL, &devices);
+    std::vector<cl::Device>::iterator jt, jnd;
+    for (jt = devices.begin(), jnd = devices.end(); jt != jnd; ++jt) {
+      if (jt->getInfo<CL_DEVICE_TYPE>() == preferredType) {
+        ClipInit(*jt, imValType, filtValType, errFn);
+        return;
+      }
     }
-    
-    if (devices.size() == 0)
-      throw std::runtime_error("Couldn't find any OpenCL devices");
   }
   
+  platforms[0].getDevices(CL_DEVICE_TYPE_DEFAULT, &devices);
   ClipInit(devices, imValType, filtValType, errFn);
 }
 
