@@ -65,62 +65,60 @@ ValueType ValueTypeForBitDepth(i32 depth) {
 typedef i32 ContextID;
 
 namespace detail {
+  inline void notificationFunction(const char *errInfo,
+                                   const void *, size_t, void *) {
+    std::cerr << errInfo << std::endl;
+  }
 
-inline void notificationFunction(const char *errInfo,
-                                 const void *, size_t, void *) {
-	std::cerr << errInfo << std::endl;
-}
+  inline std::vector< std::tr1::function<void ()> >& initClients() {
+    static std::vector< std::tr1::function<void ()> > initClients;
+    return initClients;
+  }
 
-inline std::vector< std::tr1::function<void ()> >& initClients() {
-  static std::vector< std::tr1::function<void ()> > initClients;
-  return initClients;
-}
+  inline std::map<std::string, cl::Kernel>& kernelCache() {
+    static std::map<std::string, cl::Kernel> cache;
+    return cache;
+  };
 
-inline std::map<std::string, cl::Kernel>& kernelCache() {
-  static std::map<std::string, cl::Kernel> cache;
-  return cache;
-};
+  inline std::vector<cl::Device>& devices() {
+    static std::vector<cl::Device> devices;
+    return devices;
+  }
 
-inline std::vector<cl::Device>& devices() {
-  static std::vector<cl::Device> devices;
-  return devices;
-}
+  inline cl::Context& context() {
+    static cl::Context context;
+    return context;
+  }
 
-inline cl::Context& context() {
-  static cl::Context context;
-  return context;
-}
+  inline ContextID& contextID() {
+    static ContextID contextID = 0;
+    return contextID;
+  }
 
-inline ContextID& contextID() {
-  static ContextID contextID = 0;
-  return contextID;
-}
+  inline std::map<std::string, cl::Program>& programs() {
+    static std::map<std::string, cl::Program> programs;
+    return programs;
+  }
 
-inline std::map<std::string, cl::Program>& programs() {
-  static std::map<std::string, cl::Program> programs;
-  return programs;
-}
+  inline cl::CommandQueue& queue() {
+    static cl::CommandQueue queue;
+    return queue;
+  }
 
-inline cl::CommandQueue& queue() {
-  static cl::CommandQueue queue;
-  return queue;
-}
+  inline ValueType& imageBufferValueType() {
+    static ValueType imageBufferValueType;
+    return imageBufferValueType;
+  }
 
-inline ValueType& imageBufferValueType() {
-  static ValueType imageBufferValueType;
-  return imageBufferValueType;
-}
+  inline ValueType& filterValueType() {
+    static ValueType imageBufferValueType;
+    return imageBufferValueType;
+  }
 
-inline ValueType& filterValueType() {
-  static ValueType imageBufferValueType;
-  return imageBufferValueType;
-}
-
-inline i32& enqueuesPerFinish() {
-  static i32 enqueuesPerFinish = 1;
-  return enqueuesPerFinish;
-}
-
+  inline i32& enqueuesPerFinish() {
+    static i32 enqueuesPerFinish = 1;
+    return enqueuesPerFinish;
+  }
 }
 
 inline const cl::Context& CurrentContext() {
