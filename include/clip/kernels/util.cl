@@ -43,6 +43,8 @@
 #else\n\
 #define imval float\n\
 #endif\n\
+\n\
+#define PI 3.14159265358979323846f\n\
 "
 CLIP_STRINGIFY(
 int get_global_index(void);

@@ -102,6 +102,10 @@ class ImageData {
     initWithPadding(data, leftPad, rightPad, bottomPad, topPad, padVal);
   }
   
+  ImageData clone() {
+    return ImageData(*this, true);
+  }
+  
   void pad(i32 leftPad, i32 rightPad, i32 bottomPad, i32 topPad,
            f32 padVal = 0.f) {
     initWithPadding(&(*data_)[0], leftPad, rightPad, bottomPad, topPad, padVal);
