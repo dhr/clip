@@ -20,7 +20,7 @@
 
 namespace clip {
 
-void ClearBufferCache() {
+inline void ClearBufferCache() {
   detail::BufferCache::instance().clear();
 }
 
@@ -142,6 +142,8 @@ class ImageBuffer {
   }
   
   void sendData(const ImageData& data) {
+    if (data.width() != width() || data.height() != height())
+      throw std::runtime_error("Image dimension mismatch");
     sendData(&data.data()[0]);
   }
   

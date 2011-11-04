@@ -90,31 +90,24 @@ class GlobalBufferImpl : public ImageBufferImpl {
     }
     
     CurrentQueue().enqueueReadBuffer(sourceBuf, true, 0, nBytes, &temp[0]);
-    
-    i32 xPadding = paddedWidth_ - width_;
-    i32 yPadding = paddedHeight_ - height_;
-    
-    i32 leftPad = xPadding/2 + xPadding%2;
-    i32 rightPad = xPadding/2;
-    i32 bottomPad = yPadding/2 + yPadding%2;
-    i32 topPad = yPadding/2;
-    
-    PadData(&temp[0], paddedWidth_, paddedHeight_,
-            -leftPad, -rightPad, -bottomPad, -topPad,
-            0.f, data);
+        
+    unpadData(&temp[0], data);
   };
   
   void sendData(const f32 *data) {
     i32 n = paddedWidth_*paddedHeight_;
     i32 nBytes = n*SizeofValueType(valType_);
     
+    ImageData padded = makePaddedData(data);
+    f32* paddedPtr = &padded.data()[0];
+    
     if (valType_ == Float32) {
-      CurrentQueue().enqueueWriteBuffer(buffer_, false, 0, nBytes, data);
+      CurrentQueue().enqueueWriteBuffer(buffer_, true, 0, nBytes, paddedPtr);
       return;
     }
     
     cl::Buffer temp(CurrentContext(), CL_MEM_COPY_HOST_PTR,
-                    n*sizeof(f32), const_cast<f32*>(data));
+                    n*sizeof(f32), paddedPtr);
     floatToHalf(temp, n, buffer_);
   }
   

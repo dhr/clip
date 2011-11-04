@@ -63,17 +63,31 @@ class ImageBufferImpl {
                      leftPad, rightPad, bottomPad, topPad);
   }
   
+  void unpadData(const f32* padded, f32* unpadded) const {
+    i32 xPadding = paddedWidth_ - width_;
+    i32 yPadding = paddedHeight_ - height_;
+    
+    i32 leftPad = xPadding/2 + xPadding%2;
+    i32 rightPad = xPadding/2;
+    i32 bottomPad = yPadding/2 + yPadding%2;
+    i32 topPad = yPadding/2;
+    
+    PadData(padded, paddedWidth_, paddedHeight_,
+            -leftPad, -rightPad, -bottomPad, -topPad,
+            0.f, unpadded);
+  }
+  
   friend class BufferCache;
   
  public:
-  virtual ~ImageBufferImpl() {};
+  virtual ~ImageBufferImpl() {}
   
   virtual void fetchData(f32* data) const = 0;
   
-  inline const cl::Memory &mem() { return *memory_; }
-  inline const cl::NDRange &offset() { return cl::NullRange; }
-  inline const cl::NDRange &itemRange() { return itemRange_; }
-  inline const cl::NDRange &groupRange() { return cl::NullRange; }
+  inline const cl::Memory& mem() { return *memory_; }
+  inline const cl::NDRange& offset() { return cl::NullRange; }
+  inline const cl::NDRange& itemRange() { return itemRange_; }
+  inline const cl::NDRange& groupRange() { return cl::NullRange; }
   
   virtual void sendData(const f32 *data) = 0;
   virtual void copyInto(ImageBufferImpl *dest) const = 0;

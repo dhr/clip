@@ -68,7 +68,9 @@ class BufferCache {
     
     if (!p.get()) return p;
     
-    // We're a friend, so we can perform (necessary) surgery
+    // We're a friend, so we can perform (necessary) surgery... The ImplPtrs
+    // are cached only based on actual width/height of the allocated memory, so
+    // here the correct padding/alignment information is added
     p->width_ = width;
     p->height_ = height;
     p->xAlign_ = xAlign;
@@ -84,8 +86,9 @@ class BufferCache {
   
   inline void release(const BufferCacheKey& key,
                       ImageBufferImplPtr& ptr) {
-    if (cacheValid())
+    if (cacheValid()) {
       cache().insert(std::make_pair(key, ptr));
+    }
   }
   
   inline void release(ImageBufferImplPtr& ptr) {

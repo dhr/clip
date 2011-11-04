@@ -82,6 +82,10 @@ class SparseImageData {
     std::sort(data_->begin(), data_->end(), sparseValueCompare);
   }
   
+  SparseImageData clone() {
+    return SparseImageData(*this, true);
+  }
+  
   inline i32 numElems() const { return i32((*data_).size()); }
   inline i32 width() const { return width_; }
   inline i32 height() const { return height_; }

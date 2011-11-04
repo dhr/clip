@@ -63,18 +63,7 @@ class TextureBufferImpl : public ImageBufferImpl {
     region[2] = 1;
     CurrentQueue().enqueueReadImage(buffer_, true, origin, region,
                                     paddedWidth_*4, 0, &temp[0]);
-    
-    i32 xPadding = paddedWidth_ - width_;
-    i32 yPadding = paddedHeight_ - height_;
-    
-    i32 leftPad = xPadding/2 + xPadding%2;
-    i32 rightPad = xPadding/2;
-    i32 bottomPad = yPadding/2 + yPadding%2;
-    i32 topPad = yPadding/2;
-    
-    PadData(&temp[0], paddedWidth_, paddedHeight_,
-            -leftPad, -rightPad, -bottomPad, -topPad,
-            0.f, data);
+    unpadData(&temp[0], data);
   };
   
   void sendData(const f32 *data) {
