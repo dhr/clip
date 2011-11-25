@@ -14,8 +14,11 @@ namespace clip {
 
 template<typename InIterator, typename OutIterator>
 void LoadFilters(InIterator begin, InIterator end, OutIterator output) {
-  for (InIterator i = begin; i != end; ++i)
-    *output++ = ImageBuffer(*i, CurrentFilterValueType(), 1, 1, Global, false);
+  i32 xAlign = (CurrentBufferType() == Texture)*3 + 1;
+  for (InIterator i = begin; i != end; ++i) {
+    *output++ = ImageBuffer(*i, CurrentFilterValueType(),
+                            xAlign, 1, Global, false);
+  }
 }
 
 template<typename InIterator, typename OutIterator>
@@ -24,24 +27,25 @@ void LoadSparseFilters(InIterator begin, InIterator end, OutIterator output) {
     *output++ = SparseImageBuffer(*i, CurrentFilterValueType());
 }
 
-inline ImageBuffer Filter(const ImageBuffer& image, const ImageBuffer& filter,
+inline ImageBuffer Filter(const ImageBuffer& image,
+                          const ImageBuffer& filter,
                           ImageBuffer o) {
-  static CachedKernel cpu_cache("filter_cpu");
-  static CachedKernel gpu_cache("filter_gpu");
+  static CachedKernel cache("filter");
+  cl::Kernel& kernel = cache.get();
   
-  if (CurrentDeviceType() == CPU) {
-    cl::Kernel& kernel = cpu_cache.get();
-  
+  if (CurrentDeviceType() == CPU || image.type() == Texture) {
     kernel.setArg(0, image.mem());
     kernel.setArg(1, filter.mem());
     kernel.setArg(2, filter.paddedWidth());
     kernel.setArg(3, filter.paddedHeight());
     kernel.setArg(4, o.mem());
-    Enqueue(kernel, o);
+    Enqueue(kernel,
+            cl::NullRange,
+            cl::NDRange(image.paddedWidth()/((image.type() == Texture)*3 + 1),
+                        image.paddedHeight()),
+            cl::NullRange);
   }
   else {
-    cl::Kernel& kernel = gpu_cache.get();
-    
     i32 kernWidth = filter.width();
     i32 halfKernWidth = kernWidth/2;
     i32 kernHeight = filter.height();
@@ -49,8 +53,8 @@ inline ImageBuffer Filter(const ImageBuffer& image, const ImageBuffer& filter,
     i32 apronRem = halfKernWidth%4;
     i32 apronWidth = halfKernWidth + (apronRem ? 4 - apronRem : 0);
     cl::LocalSpaceArg imCacheSize = 
-      {(DefaultXAlign + 2*apronWidth)*
-       (DefaultYAlign + 2*(halfKernHeight) - !(kernHeight%2))*
+      {(image.xAlign() + 2*apronWidth)*
+       (image.yAlign() + 2*(halfKernHeight) - !(kernHeight%2))*
        sizeof(f32)};
     cl::LocalSpaceArg filtCacheSize = {kernWidth*kernHeight*sizeof(f32)};
     
@@ -74,11 +78,10 @@ inline ImageBuffer Filter(const ImageBuffer& image, const ImageBuffer& filter,
 inline ImageBuffer Filter(const ImageBuffer& image,
                           const SparseImageBuffer& filter,
                           ImageBuffer o) {
-  static CachedKernel cpu_cache("filter_sparse_cpu");
-  static CachedKernel gpu_cache("filter_sparse_gpu");
+  static CachedKernel cache("filter_sparse");
   
-  if (CurrentDeviceType() == CPU) {
-    cl::Kernel& kernel = cpu_cache.get();
+  if (CurrentDeviceType() == CPU || image.type() == Texture) {
+    cl::Kernel& kernel = cache.get();
   
     kernel.setArg(0, image.mem());
     kernel.setArg(1, filter.mem());
@@ -92,7 +95,7 @@ inline ImageBuffer Filter(const ImageBuffer& image,
     if (filter.numElems() == 0)
       return Memset(o, 0);
   
-    cl::Kernel& kernel = gpu_cache.get();
+    cl::Kernel& kernel = cache.get();
     
     i32 kernWidth = filter.width();
     i32 halfKernWidth = kernWidth/2;
@@ -101,8 +104,8 @@ inline ImageBuffer Filter(const ImageBuffer& image,
     i32 apronRem = halfKernWidth%4;
     i32 apronWidth = halfKernWidth + (apronRem ? 4 - apronRem : 0);
     cl::LocalSpaceArg imCacheSize = 
-      {(DefaultXAlign + 2*apronWidth)*
-       (DefaultYAlign + 2*(halfKernHeight) - !(kernHeight%2))*
+      {(image.xAlign() + 2*apronWidth)*
+       (image.yAlign() + 2*(halfKernHeight) - !(kernHeight%2))*
        sizeof(f32)};
     cl::LocalSpaceArg filtCacheSize = {filter.numElems()*sizeof(SparseValue)};
     
@@ -124,7 +127,8 @@ inline ImageBuffer Filter(const ImageBuffer& image,
   return o;
 }
 
-inline ImageBuffer Filter(const ImageBuffer& image, const ImageBuffer& filter) {
+inline ImageBuffer Filter(const ImageBuffer& image,
+                          const ImageBuffer& filter) {
   return Filter(image, filter, ~image);
 }
 
@@ -150,8 +154,10 @@ inline cl::Buffer& filterMemory() {
 inline ImageBuffer Filter(const ImageBuffer& image, const ImageData& filter,
                           ImageBuffer o) {
   ImageBuffer filterBuffer(detail::filterMemory(),
-                           filter.width(), filter.height(), Float32,
-                           (DefaultBufferType == Texture)*3 + 1, 1);
+                           filter.width(), filter.height(),
+                           CurrentFilterValueType(),
+                           (image.type() == Texture)*3 + 1, 1,
+                           Global);
   filterBuffer.sendData(filter);
   return Filter(image, filterBuffer, o);
 }
@@ -218,13 +224,13 @@ class GradientOp {
   
   void initGradients() {
     f32 sobelX[] = {-1,  0,  1,
-                      -1,  0,  1,
-                      -1,  0,  1};
+                    -1,  0,  1,
+                    -1,  0,  1};
     
     // ImageData's (0, 0) starts at lower left corner, this gets flipped
     f32 sobelY[] = {-1, -1, -1,
-                       0,  0,  0,
-                       1,  1,  1};
+                     0,  0,  0,
+                     1,  1,  1};
     
     sobelX_ = ImageData(sobelX, 3, 3).normalize();
     sobelY_ = ImageData(sobelY, 3, 3).normalize();

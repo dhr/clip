@@ -11,7 +11,9 @@
 namespace clip {
 
 inline void Enqueue(cl::Kernel& k, const ImageBuffer& b) {
-  Enqueue(k, b.offset(), b.itemRange(), b.groupRange());
+  cl::NDRange itemRange(b.paddedWidth()/CurrentCalculationWidth(),
+                        b.paddedHeight());
+  Enqueue(k, cl::NullRange, itemRange, cl::NullRange);
 }
 
 inline ImageBuffer DoBasicOp(cl::Kernel& kernel, const ImageBuffer& i1,

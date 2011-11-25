@@ -1,154 +1,146 @@
-CLIP_STRINGIFY(
-kernel void writeval(global imval *buffer, float value) {
-  int indx = get_global_index();
-  store(imval, value, indx, buffer);
+kernel void writeval(output_t buffer, float value) {
+  index_t indx = get_global_index();
+  store((calc_t) value, indx, buffer);
 }
 
-kernel void scale(global imval* input, float amount,
-                  global imval* output) {
-  int indx = get_global_index();
-	store(imval, amount*load(imval, indx, input), indx, output);
+kernel void scale(input_t input, float amount,
+                  output_t output) {
+  index_t indx = get_global_index();
+	store(amount*load(indx, input), indx, output);
 }
 
-kernel void power(global imval* input,
+kernel void power(input_t input,
                   float amount,
                   int absify,
-                  global imval* output) {
-  int indx = get_global_index();
-  float val = absify ? fabs(load(imval, indx, input)) : load(imval, indx, input);
-	store(imval, pow(val, amount), indx, output);
+                  output_t output) {
+  index_t indx = get_global_index();
+  calc_t val = load(indx, input);
+  val = absify ? fabs(val) : val;
+	store(pow(val, (calc_t) amount), indx, output);
 }
 
-kernel void negate(global imval* input,
-                   global imval* output) {
-  int indx = get_global_index();
-	store(imval, -load(imval, indx, input), indx, output);
+kernel void negate(input_t input,
+                   output_t output) {
+  index_t indx = get_global_index();
+	store(-load(indx, input), indx, output);
 }
 
-kernel void halfrect(global imval* input,
-                     global imval* output) {
-  int indx = get_global_index();
-  store(imval, fmax(0.f, load(imval, indx, input)), indx, output);
+kernel void halfrect(input_t input,
+                     output_t output) {
+  index_t indx = get_global_index();
+  store(fmax((calc_t) 0.f, load(indx, input)), indx, output);
 }
 
-kernel void threshold(global imval* input,
+kernel void threshold(input_t input,
                       float thresh,
-                      global imval* output) {
-  int indx = get_global_index();
-  float val = load(imval, indx, input);
-  store(imval, val >= thresh ? val : 0.f, indx, output);
+                      output_t output) {
+  index_t indx = get_global_index();
+  calc_t val = load(indx, input);
+  store(iif(val >= thresh, val, 0.f), indx, output);
 }
 
-kernel void pointwisethreshold(global imval* input,
-                               global imval* thresholds,
-                               global imval* output) {
-  int indx = get_global_index();
-  float val = load(imval, indx, input);
-  float thresh = load(imval, indx, thresholds);
-  store(imval, val >= thresh ? val : 0.f, indx, output);
+kernel void pointwisethreshold(input_t input,
+                               input_t thresholds,
+                               output_t output) {
+  index_t indx = get_global_index();
+  calc_t val = load(indx, input);
+  calc_t thresh = load(indx, thresholds);
+  store(iif(val >= thresh, val, 0.f), indx, output);
 }
 
-kernel void bound(global imval* input,
-                  global imval* output) {
-  int indx = get_global_index();
-  store(imval, clamp(load(imval, indx, input), 0.f, 1.f), indx, output);
+kernel void bound(input_t input,
+                  output_t output) {
+  index_t indx = get_global_index();
+  store(clamp(load(indx, input), 0.f, 1.f), indx, output);
 }
 
-kernel void subtract(global imval* input1,
-                     global imval* input2,
-                     global imval* output) {
-	int indx = get_global_index();
-  store(imval, load(imval, indx, input1) -
-        load(imval, indx, input2), indx, output);
+kernel void subtract(input_t input1,
+                     input_t input2,
+                     output_t output) {
+	index_t indx = get_global_index();
+  store(load(indx, input1) - load(indx, input2), indx, output);
 }
 
-kernel void addscalar(global imval* input,
+kernel void addscalar(input_t input,
                       float amt,
-                      global imval* output) {
-  int indx = get_global_index();
-	store(imval, load(imval, indx, input) + amt, indx, output);
+                      output_t output) {
+  index_t indx = get_global_index();
+	store(load(indx, input) + amt, indx, output);
 }
 
-kernel void sum2(global imval* input1,
-                 global imval* input2,
-                 global imval* output) {
-	int indx = get_global_index();
-  store(imval, load(imval, indx, input1) +
-        load(imval, indx, input2), indx, output);
+kernel void sum2(input_t input1,
+                 input_t input2,
+                 output_t output) {
+	index_t indx = get_global_index();
+  store(load(indx, input1) + load(indx, input2), indx, output);
 }
 
-kernel void sum4(global imval* input1,
-                 global imval* input2,
-                 global imval* input3,
-                 global imval* input4,
-                 global imval* output) {
-	int indx = get_global_index();
-  store(imval, load(imval, indx, input1) + load(imval, indx, input2) +
-        load(imval, indx, input3) + load(imval, indx, input4),
+kernel void sum4(input_t input1,
+                 input_t input2,
+                 input_t input3,
+                 input_t input4,
+                 output_t output) {
+	index_t indx = get_global_index();
+  store(load(indx, input1) + load(indx, input2) +
+        load(indx, input3) + load(indx, input4),
         indx, output);
 }
 
-kernel void abssum2(global imval* input1,
-                    global imval* input2,
-                    global imval* output) {
-	int indx = get_global_index();
-  store(imval, fabs(load(imval, indx, input1)) + fabs(load(imval, indx, input2)),
+kernel void abssum2(input_t input1,
+                    input_t input2,
+                    output_t output) {
+	index_t indx = get_global_index();
+  store(fabs(load(indx, input1)) + fabs(load(indx, input2)), indx, output);
+}
+
+kernel void abssum4(input_t input1,
+                    input_t input2,
+                    input_t input3,
+                    input_t input4,
+                    output_t output) {
+	index_t indx = get_global_index();
+  store(fabs(load(indx, input1)) + fabs(load(indx, input2)) +
+        fabs(load(indx, input3)) + fabs(load(indx, input4)),
         indx, output);
 }
 
-kernel void abssum4(global imval* input1,
-                    global imval* input2,
-                    global imval* input3,
-                    global imval* input4,
-                    global imval* output) {
-	int indx = get_global_index();
-  store(imval, fabs(load(imval, indx, input1)) + fabs(load(imval, indx, input2)) +
-        fabs(load(imval, indx, input3)) + fabs(load(imval, indx, input4)),
-        indx, output);
+kernel void max2(input_t input1,
+                 input_t input2,
+                 output_t output) {
+	index_t indx = get_global_index();
+  store(fmax(load(indx, input1), load(indx, input2)), indx, output);
 }
 
-kernel void max2(global imval* input1,
-                 global imval* input2,
-                 global imval* output) {
-	int indx = get_global_index();
-  store(imval, fmax(load(imval, indx, input1), load(imval, indx, input2)),
-        indx, output);
+kernel void max4(input_t input1,
+                 input_t input2,
+                 input_t input3,
+                 input_t input4,
+                 output_t output) {
+	index_t indx = get_global_index();
+  calc_t result = fmax(load(indx, input1), load(indx, input2));
+  result = fmax(result, load(indx, input3));
+  result = fmax(result, load(indx, input4));
+  store(result, indx, output);
 }
 
-kernel void max4(global imval* input1,
-                 global imval* input2,
-                 global imval* input3,
-                 global imval* input4,
-                 global imval* output) {
-	int indx = get_global_index();
-  float result = fmax(load(imval, indx, input1), load(imval, indx, input2));
-  result = fmax(result, load(imval, indx, input3));
-  result = fmax(result, load(imval, indx, input4));
-  store(imval, result, indx, output);
+kernel void mul(input_t input1,
+                input_t input2,
+                output_t output) {
+	index_t indx = get_global_index();
+  store(load(indx, input1)*load(indx, input2), indx, output);
 }
 
-kernel void mul(global imval* input1,
-                global imval* input2,
-                global imval* output) {
-	int indx = get_global_index();
-  store(imval, load(imval, indx, input1)*load(imval, indx, input2), indx, output);
+kernel void div(input_t input1,
+                input_t input2,
+                output_t output) {
+	index_t indx = get_global_index();
+  store(native_divide(load(indx, input1), load(indx, input2)), indx, output);
 }
 
-kernel void div(global imval* input1,
-                global imval* input2,
-                global imval* output) {
-	int indx = get_global_index();
-  store(imval, native_divide(load(imval, indx, input1),
-                             load(imval, indx, input2)),
-        indx, output);
-}
-
-kernel void muladd(global imval* input1,
-                   global imval* input2,
+kernel void muladd(input_t input1,
+                   input_t input2,
                    float scale,
-                   global imval* output) {
-	int indx = get_global_index();
-  store(imval, load(imval, indx, input1) + scale*load(imval, indx, input2),
-        indx, output);
+                   output_t output) {
+	index_t indx = get_global_index();
+  store(load(indx, input1) + scale*load(indx, input2), indx, output);
 }
-)

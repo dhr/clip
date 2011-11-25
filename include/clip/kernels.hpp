@@ -5,17 +5,17 @@
 
 inline const char* BasicKernels() {
   static const char* kernels =
-    #include "kernels/util.cl"
-    #include "kernels/basic.cl"
+    #include "kernels/util.clstr"
+    #include "kernels/basic.clstr"
     ;
   return kernels;
 }
 
 inline const char* ImProcKernels() {
   static const char* kernels =
-    #include "kernels/util.cl"
-    #include "kernels/improcutil.cl"
-    #include "kernels/improc.cl"
+    #include "kernels/util.clstr"
+    #include "kernels/improcutil.clstr"
+    #include "kernels/improc.clstr"
     ;
   return kernels;
 }

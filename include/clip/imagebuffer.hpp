@@ -14,10 +14,6 @@
 #include "clip/detail/globalbufferimpl.hpp"
 #include "clip/detail/memutil.hpp"
 
-#define DefaultBufferType (USE_TEXTURES ? Texture : Global)
-#define DefaultXAlign 64
-#define DefaultYAlign 16
-
 namespace clip {
 
 inline void ClearBufferCache() {
@@ -36,15 +32,22 @@ class ImageBuffer {
       BufferCache::instance().retrieve(type, valType, width, height,
                                        xAlign, yAlign);
     
+    if (type == Default)
+      type = CurrentBufferType();
+    
     if (impl.get()) {
       impl_ = impl;
       if (data) sendData(data);
     }
     else if (type == Global) {
+      if (xAlign < 0) xAlign = 64;
+      if (yAlign < 0) yAlign = 16;
       impl_ = ImageBufferImplPtr(
         new GlobalBufferImpl(data, width, height, valType, xAlign, yAlign, 0));
     }
     else {
+      if (xAlign < 0) xAlign = 64;
+      if (yAlign < 0) yAlign = 16;
       impl_ = ImageBufferImplPtr(
         new TextureBufferImpl(data, width, height, valType, xAlign, yAlign, 0));
     }
@@ -56,13 +59,13 @@ class ImageBuffer {
   ImageBuffer(i32 width, i32 height)
   : cacheable_(true)
   {
-    initialize(NULL, width, height, CurrentImBufValueType(),
-               DefaultXAlign, DefaultYAlign, DefaultBufferType);
+    initialize(NULL, width, height, CurrentImBufValueType(), -1, -1, Default);
   }
   
   ImageBuffer(i32 width, i32 height, ValueType valType,
-              i32 xAlign = DefaultXAlign, i32 yAlign = DefaultYAlign,
-              ImageBufferType type = DefaultBufferType, bool cacheable = true)
+              i32 xAlign = -1, i32 yAlign = -1,
+              ImageBufferType type = Default,
+              bool cacheable = true)
   : cacheable_(cacheable)
   {
     initialize(NULL, width, height, valType, xAlign, yAlign, type);
@@ -73,14 +76,13 @@ class ImageBuffer {
   : cacheable_(true)
   {
     initialize(&data.data()[0], data.width(), data.height(),
-               CurrentImBufValueType(),
-               DefaultXAlign, DefaultYAlign, DefaultBufferType);
+               CurrentImBufValueType(), -1, -1, Default);
   }
   
   explicit
   ImageBuffer(const ImageData &data, ValueType valType,
-              i32 xAlign = DefaultXAlign, i32 yAlign = DefaultYAlign,
-              ImageBufferType type = DefaultBufferType, bool cacheable = true)
+              i32 xAlign = -1, i32 yAlign = -1, ImageBufferType type = Default,
+              bool cacheable = true)
   : cacheable_(cacheable)
   {
     initialize(&data.data()[0], data.width(), data.height(), valType,
@@ -90,20 +92,19 @@ class ImageBuffer {
   ImageBuffer(const f32* data, i32 width, i32 height)
   : cacheable_(true)
   {
-    initialize(data, width, height, CurrentImBufValueType(),
-               DefaultXAlign, DefaultYAlign, DefaultBufferType);
+    initialize(data, width, height, CurrentImBufValueType(), -1, -1, Default);
   }
   
   ImageBuffer(const f32* data, i32 width, i32 height, ValueType valType,
-              i32 xAlign = DefaultXAlign, i32 yAlign = DefaultYAlign,
-              ImageBufferType type = DefaultBufferType, bool cacheable = true)
+              i32 xAlign = -1, i32 yAlign = -1, ImageBufferType type = Default,
+              bool cacheable = true)
   : cacheable_(cacheable)
   {
     initialize(data, width, height, valType, xAlign, yAlign, type);
   }
   
   ImageBuffer(cl::Buffer data, i32 width, i32 height, ValueType valType,
-              i32 xAlign = DefaultXAlign, i32 yAlign = DefaultYAlign,
+              i32 xAlign = -1, i32 yAlign = -1, ImageBufferType type = Default,
               bool cacheable = false)
   : cacheable_(cacheable)
   {
@@ -113,7 +114,7 @@ class ImageBuffer {
   }
   
   ImageBuffer(cl::Image2D data, i32 width, i32 height, ValueType valType,
-              i32 xAlign = DefaultXAlign, i32 yAlign = DefaultYAlign,
+              i32 xAlign = -1, i32 yAlign = -1, ImageBufferType type = Default,
               bool cacheable = false)
   : cacheable_(cacheable)
   {
@@ -163,9 +164,6 @@ class ImageBuffer {
   }
   
   inline const cl::Memory &mem() const { return impl_->mem(); }
-  inline const cl::NDRange &offset() const { return impl_->offset(); }
-  inline const cl::NDRange &itemRange() const { return impl_->itemRange(); }
-  inline const cl::NDRange &groupRange() const { return impl_->groupRange(); }
   
   inline ImageBufferType type() const { return impl_->type(); }
   inline bool cacheable() { return cacheable_; }

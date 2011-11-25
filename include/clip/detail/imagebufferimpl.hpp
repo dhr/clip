@@ -28,7 +28,6 @@ class ImageBufferImpl {
   i32 yAlign_;
   i32 paddedWidth_;
   i32 paddedHeight_;
-  cl::NDRange itemRange_;
   
   ImageBufferImpl(ImageBufferType type,
                   ValueType valType,
@@ -85,9 +84,6 @@ class ImageBufferImpl {
   virtual void fetchData(f32* data) const = 0;
   
   inline const cl::Memory& mem() { return *memory_; }
-  inline const cl::NDRange& offset() { return cl::NullRange; }
-  inline const cl::NDRange& itemRange() { return itemRange_; }
-  inline const cl::NDRange& groupRange() { return cl::NullRange; }
   
   virtual void sendData(const f32 *data) = 0;
   virtual void copyInto(ImageBufferImpl *dest) const = 0;

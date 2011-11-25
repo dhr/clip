@@ -37,7 +37,7 @@ class TextureBufferImpl : public ImageBufferImpl {
     // FIXME: Ensure the data we've been passed conforms with the dimensions
   }
   
-  TextureBufferImpl(const f32 *data, i32 width, i32 height, ValueType valType,
+  TextureBufferImpl(const f32* data, i32 width, i32 height, ValueType valType,
                     i32 xAlign, i32 yAlign, cl_mem_flags flags)
   : ImageBufferImpl(Texture, valType, &buffer_, width, height, xAlign, yAlign)
   {
@@ -49,7 +49,6 @@ class TextureBufferImpl : public ImageBufferImpl {
                             cl::ImageFormat(CL_RGBA, CL_FLOAT),
                             paddedWidth_/4, paddedHeight_, 0);
     }
-    itemRange_ = cl::NDRange(paddedWidth_/4, paddedHeight_);
   }
   
   void fetchData(f32* data) const {
@@ -66,7 +65,7 @@ class TextureBufferImpl : public ImageBufferImpl {
     unpadData(&temp[0], data);
   };
   
-  void sendData(const f32 *data) {
+  void sendData(const f32* data) {
     cl::size_t<3> orig;
     orig[0] = orig[1] = orig[2] = 0;
     cl::size_t<3> region;
@@ -77,12 +76,12 @@ class TextureBufferImpl : public ImageBufferImpl {
                                      const_cast<f32 *>(data));
   }
   
-  void copyInto(ImageBufferImpl *dest) const {
+  void copyInto(ImageBufferImpl* dest) const {
     assert(type_ == dest->type());
     assert(paddedWidth_ == dest->paddedWidth() &&
            paddedHeight_ == dest->paddedHeight());
     
-    TextureBufferImpl *realDest = static_cast<TextureBufferImpl *>(dest);
+    TextureBufferImpl* realDest = static_cast<TextureBufferImpl *>(dest);
     
     cl::size_t<3> origin;
     origin[0] = origin[1] = origin[2] = 0;

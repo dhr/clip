@@ -73,7 +73,6 @@ class GlobalBufferImpl : public ImageBufferImpl {
       i32 nBytes = paddedWidth_*paddedHeight_*SizeofValueType(valType_);
       buffer_ = cl::Buffer(CurrentContext(), 0, nBytes);
     }
-    itemRange_ = cl::NDRange(paddedWidth_, paddedHeight_);
   }
   
   void fetchData(f32* data) const {

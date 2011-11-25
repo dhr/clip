@@ -23,6 +23,23 @@
 #include "clip/imagebuffertypes.hpp"
 #include "clip/kernels.hpp"
 
+#ifndef CLIP_ENABLE_PROFILING
+# define CLIP_ENABLE_PROFILING 0
+#endif
+
+#ifndef CLIP_DEFAULT_PROGRAM_SETTINGS
+# define CLIP_DEFAULT_PROGRAM_SETTINGS \
+    ProgramSettings(4, Float32, Float32, Texture)
+#endif
+
+#ifndef CLIP_DEFAULT_NOTIFICATION_FUNCTION
+# ifdef __APPLE__
+#   define CLIP_DEFAULT_NOTIFICATION_FUNCTION clLogMessagesToStdoutAPPLE
+# else
+#   define CLIP_DEFAULT_NOTIFICATION_FUNCTION detail::notificationFunction
+# endif
+#endif
+
 namespace clip {
 
 enum ComputeDeviceType {
@@ -64,6 +81,22 @@ ValueType ValueTypeForBitDepth(i32 depth) {
 
 typedef i32 ContextID;
 
+struct ProgramSettings {
+  i32 calculationWidth;
+  ValueType memoryValueType;
+  ValueType filterValueType;
+  ImageBufferType bufferType;
+  
+  ProgramSettings(i32 calculationWidth,
+                  ValueType memoryValueType,
+                  ValueType filterValueType,
+                  ImageBufferType bufferType)
+  : calculationWidth(calculationWidth),
+    memoryValueType(memoryValueType),
+    filterValueType(filterValueType),
+    bufferType(bufferType) {}
+};
+
 namespace detail {
   inline void notificationFunction(const char *errInfo,
                                    const void *, size_t, void *) {
@@ -104,15 +137,15 @@ namespace detail {
     static cl::CommandQueue queue;
     return queue;
   }
-
-  inline ValueType& imageBufferValueType() {
-    static ValueType imageBufferValueType;
-    return imageBufferValueType;
+  
+  inline cl::Event& lastEvent() {
+    static cl::Event event;
+    return event;
   }
-
-  inline ValueType& filterValueType() {
-    static ValueType imageBufferValueType;
-    return imageBufferValueType;
+  
+  inline ProgramSettings& defaultProgramSettings() {
+    static ProgramSettings settings(4, Float32, Float32, Global);
+    return settings;
   }
 
   inline i32& enqueuesPerFinish() {
@@ -133,12 +166,33 @@ inline const cl::CommandQueue& CurrentQueue() {
   return detail::queue();
 }
 
+inline const cl::Event& LastEvent() {
+  return detail::lastEvent();
+}
+
+inline i64 LastEventTiming() {
+  return LastEvent().getProfilingInfo<CL_PROFILING_COMMAND_END>() -
+         LastEvent().getProfilingInfo<CL_PROFILING_COMMAND_START>();
+}
+
+inline const ProgramSettings& DefaultProgramSettings() {
+  return detail::defaultProgramSettings();
+}
+
+inline i32 CurrentCalculationWidth() {
+  return DefaultProgramSettings().calculationWidth;
+}
+
 inline ValueType CurrentImBufValueType() {
-  return detail::imageBufferValueType();
+  return DefaultProgramSettings().memoryValueType;
 }
 
 inline ValueType CurrentFilterValueType() {
-  return detail::filterValueType();
+  return DefaultProgramSettings().filterValueType;
+}
+
+inline ImageBufferType CurrentBufferType() {
+  return DefaultProgramSettings().bufferType;
 }
 
 inline const cl::Device& CurrentDevice() {
@@ -150,7 +204,9 @@ inline ComputeDeviceType CurrentDeviceType() {
   return ComputeDeviceType(device.getInfo<CL_DEVICE_TYPE>());
 }
 
-inline void AddProgram(const std::string& progName, cl::Program& program,
+inline void AddProgram(const std::string& progName,
+                       cl::Program& program,
+                       ProgramSettings settings,
                        const std::string& options = "") {
   std::map<std::string, cl::Program>& programs = detail::programs();
   if (programs.find(progName) != programs.end())
@@ -159,20 +215,20 @@ inline void AddProgram(const std::string& progName, cl::Program& program,
 
   std::stringstream ss;
   
-  switch (CurrentImBufValueType()) {
+  switch (settings.memoryValueType) {
     case Float16:
-      ss << "-D IMVAL_HALF ";
+      ss << "-D MEMVAL_HALF ";
       break;
       
     case Float32:
-      ss << "-D IMVAL_FLOAT ";
+      ss << "-D MEMVAL_FLOAT ";
       break;
     
     default:
       throw std::logic_error("Unrecognized value type");
   }
   
-  switch (CurrentFilterValueType()) {
+  switch (settings.filterValueType) {
     case Float16:
       ss << "-D FILTVAL_HALF ";
       break;
@@ -185,7 +241,14 @@ inline void AddProgram(const std::string& progName, cl::Program& program,
       throw std::logic_error("Unrecognized value type");
   }
   
-  ss << "-cl-strict-aliasing -cl-fast-relaxed-math ";
+  if (settings.bufferType == Texture)
+    ss << "-D USE_TEXTURES ";
+  
+  if (CurrentDeviceType() == CPU)
+    ss << "-D USE_CPU ";
+  
+  ss << "-D CALC_WIDTH=" << settings.calculationWidth;
+  ss << " -cl-strict-aliasing -cl-fast-relaxed-math ";
   
 //  try {
   program.build(detail::devices(), (ss.str() + options).c_str());
@@ -207,13 +270,27 @@ inline void AddProgram(const std::string& progName, cl::Program& program,
     cache[name] = *it;
   }
 }
+  
+inline void AddProgram(const std::string& progName,
+                       cl::Program& program,
+                       const std::string& options = "") {
+  return AddProgram(progName, program, DefaultProgramSettings(), options);
+}
 
-inline cl::Program AddProgram(const std::string& name, const std::string& src,
+inline cl::Program AddProgram(const std::string& name,
+                              const std::string& src,
+                              ProgramSettings settings,
                               const std::string& options = "") {
   cl::Program::Sources sources(1, std::make_pair(src.c_str(), src.size()));
   cl::Program program(detail::context(), sources);
-  AddProgram(name, program);
+  AddProgram(name, program, settings, options);
   return program;
+}
+  
+inline cl::Program AddProgram(const std::string& name,
+                              const std::string& src,
+                              const std::string& options = "") {
+  return AddProgram(name, src, DefaultProgramSettings(), options);
 }
 
 inline cl::Program GetProgram(const std::string& name) {
@@ -262,19 +339,17 @@ inline void AddInitClient(std::tr1::function<void ()> init) {
 }
 
 inline void ClipInit(cl::Context context, cl::CommandQueue queue,
-                     ValueType imValType = Float32,
-                     ValueType filtValType = Float32) {
+                     const ProgramSettings& defaultSettings) {
   detail::programs().clear();
   
   detail::context() = context;
   ++detail::contextID();
   
   detail::queue() = queue;
-  detail::imageBufferValueType() = imValType;
-  detail::filterValueType() = filtValType;
+  detail::defaultProgramSettings() = defaultSettings;
   
-  AddProgram("basic", BasicKernels());
-  AddProgram("improc", ImProcKernels());
+  AddProgram("basic", BasicKernels(), defaultSettings);
+  AddProgram("improc", ImProcKernels(), defaultSettings);
   
   std::vector< std::tr1::function<void ()> >& initClients =
     detail::initClients();
@@ -283,37 +358,36 @@ inline void ClipInit(cl::Context context, cl::CommandQueue queue,
     (*it)();
 }
 
-#ifdef __APPLE__
-#define CLIP_DEFAULT_NOTIFICATION_FUNCTION clLogMessagesToStdoutAPPLE
-#else
-#define CLIP_DEFAULT_NOTIFICATION_FUNCTION detail::notificationFunction
-#endif
-
 inline void ClipInit(const std::vector<cl::Device>& devices,
-                     ValueType imValType = Float32,
-                     ValueType filtValType = Float32,
+                     ProgramSettings defaultSettings
+                       = CLIP_DEFAULT_PROGRAM_SETTINGS,
                      void (*errFn)(const char*, const void*, size_t, void*)
                        = CLIP_DEFAULT_NOTIFICATION_FUNCTION) {
   detail::devices() = devices;
   cl::Context context(detail::devices(), NULL, errFn);
+#if CLIP_ENABLE_PROFILING
+  cl::CommandQueue queue =
+    cl::CommandQueue(context, CurrentDevice(), CL_QUEUE_PROFILING_ENABLE);
+#else
   cl::CommandQueue queue = cl::CommandQueue(context, CurrentDevice());
+#endif
   
-  ClipInit(context, queue, imValType, filtValType);
+  ClipInit(context, queue, defaultSettings);
 }
 
 inline void ClipInit(cl::Device device,
-                     ValueType imValType = Float32,
-                     ValueType filtValType = Float32,
+                     ProgramSettings defaultSettings
+                       = CLIP_DEFAULT_PROGRAM_SETTINGS,
                      void (*errFn)(const char*, const void*, size_t, void*)
                        = CLIP_DEFAULT_NOTIFICATION_FUNCTION) {
   std::vector<cl::Device> devices;
   devices.push_back(device);
-  ClipInit(devices, imValType, filtValType, errFn);
+  ClipInit(devices, defaultSettings, errFn);
 }
 
 inline void ClipInit(i32 platformNum, i32 deviceNum,
-                     ValueType imValType = Float32,
-                     ValueType filtValType = Float32,
+                     ProgramSettings defaultSettings
+                       = CLIP_DEFAULT_PROGRAM_SETTINGS,
                      void (*errFn)(const char*, const void*, size_t, void*)
                        = CLIP_DEFAULT_NOTIFICATION_FUNCTION) {
   std::vector<cl::Platform> platforms;
@@ -328,12 +402,12 @@ inline void ClipInit(i32 platformNum, i32 deviceNum,
   if (deviceNum < 0 || deviceNum >= i32(devices.size()))
     throw std::invalid_argument("Invalid device number");
   
-  ClipInit(devices[deviceNum], imValType, filtValType, errFn);
+  ClipInit(devices[deviceNum], defaultSettings, errFn);
 }
 
 inline void ClipInit(ComputeDeviceType preferredType = GPU,
-                     ValueType imValType = Float32,
-                     ValueType filtValType = Float32,
+                     ProgramSettings defaultSettings
+                       = CLIP_DEFAULT_PROGRAM_SETTINGS,
                      void (*errFn)(const char*, const void*, size_t, void*)
                        = CLIP_DEFAULT_NOTIFICATION_FUNCTION) {
   std::vector<cl::Platform> platforms;
@@ -350,14 +424,14 @@ inline void ClipInit(ComputeDeviceType preferredType = GPU,
     std::vector<cl::Device>::iterator jt, jnd;
     for (jt = devices.begin(), jnd = devices.end(); jt != jnd; ++jt) {
       if (jt->getInfo<CL_DEVICE_TYPE>() == preferredType) {
-        ClipInit(*jt, imValType, filtValType, errFn);
+        ClipInit(*jt, defaultSettings, errFn);
         return;
       }
     }
   }
   
   platforms[0].getDevices(CL_DEVICE_TYPE_DEFAULT, &devices);
-  ClipInit(devices, imValType, filtValType, errFn);
+  ClipInit(devices, defaultSettings, errFn);
 }
 
 inline i32 EnqueuesPerFinish() { return detail::enqueuesPerFinish(); }
@@ -367,11 +441,18 @@ inline void Enqueue(cl::Kernel& k,
                     cl::NDRange offset,
                     cl::NDRange itemRange,
                     cl::NDRange groupRange) {
-  static i32 counter = 0;
+#if CLIP_ENABLE_PROFILING
+  cl::Event& event = detail::lastEvent();
+  CurrentQueue().enqueueNDRangeKernel(k, offset, itemRange, groupRange,
+                                      NULL, &event);
+  event.wait();
+#else
+  static u32 counter = 0;
   CurrentQueue().enqueueNDRangeKernel(k, offset, itemRange, groupRange);
   if (++counter%EnqueuesPerFinish() == 0) {
     CurrentQueue().finish();
   }
+#endif
 }
 
 }
