@@ -4,6 +4,7 @@
 
 #include <map>
 
+#include "clip/alignmentutil.hpp"
 #include "clip/detail/imagebufferimpl.hpp"
 
 namespace clip {
@@ -62,7 +63,7 @@ class BufferCache {
                                      i32 xAlign,
                                      i32 yAlign) {
     i32 paddedWidth, paddedHeight;
-    CalcPaddedSizes(width, height, xAlign, yAlign, &paddedWidth, &paddedHeight);
+    CalcAlignedSizes(width, height, xAlign, yAlign, &paddedWidth, &paddedHeight);
     BufferCacheKey key = MakeCacheKey(type, valType, paddedWidth, paddedHeight);
     ImageBufferImplPtr p = retrieve(key);
     

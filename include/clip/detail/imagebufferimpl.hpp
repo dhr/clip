@@ -2,20 +2,12 @@
 #ifndef CLIP_DETAIL_IMAGEBUFFERIMPL_H
 #define CLIP_DETAIL_IMAGEBUFFERIMPL_H
 
+#include "clip/alignmentutil.hpp"
 #include "clip/basictypes.hpp"
 #include "clip/imagebuffertypes.hpp"
 
 namespace clip {
 namespace detail {
-
-inline void CalcPaddedSizes(i32 width, i32 height,
-                            i32 xAlign, i32 yAlign,
-                            i32* paddedWidth, i32* paddedHeight) {
-  i32 xRem = width%xAlign;
-  i32 yRem = height%yAlign;
-  *paddedWidth = width + (xAlign - xRem)*(xRem != 0);
-  *paddedHeight = height + (yAlign - yRem)*(yRem != 0);
-}
 
 class ImageBufferImpl {
  protected:
@@ -40,8 +32,8 @@ class ImageBufferImpl {
   
   void initPaddingValues(i32 *xPaddingRet = NULL,
                          i32 *yPaddingRet = NULL) {
-    CalcPaddedSizes(width_, height_, xAlign_, yAlign_,
-                    &paddedWidth_, &paddedHeight_);
+    CalcAlignedSizes(width_, height_, xAlign_, yAlign_,
+                     &paddedWidth_, &paddedHeight_);
     
     if (xPaddingRet != NULL)
       *xPaddingRet = paddedWidth_ - width_;

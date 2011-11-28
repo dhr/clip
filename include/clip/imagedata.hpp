@@ -7,34 +7,11 @@
 
 #include <valarray>
 
+#include "clip/alignmentutil.hpp"
 #include "clip/basictypes.hpp"
 #include "clip/detail/memutil.hpp"
 
 namespace clip {
-
-void PadData(const f32 *data, i32 width, i32 height,
-             i32 leftPad, i32 rightPad,
-             i32 bottomPad, i32 topPad,
-             f32 padVal, f32* padDest) {
-  assert(padDest != data && "You can't pad data in place");
-  
-  i32 paddedWidth = width + leftPad + rightPad;
-  i32 paddedHeight = height + bottomPad + topPad;
-  assert(paddedWidth >= 0 && paddedHeight >= 0 && "Invalid padding");
-  
-  i32 srcStartX = -std::min(leftPad, 0);
-  i32 srcStartY = -std::min(bottomPad, 0);
-  i32 dstStartX = std::max(0, leftPad);
-  i32 dstStartY = std::max(0, bottomPad);
-  i32 copyWidth = std::min(width, paddedWidth);
-  i32 copyHeight = std::min(height, paddedHeight);
-  
-  for (i32 y = 0; y < copyHeight; y++) {
-    memcpy(padDest + (y + dstStartY)*paddedWidth + dstStartX,
-           data + (y + srcStartY)*width + srcStartX,
-           copyWidth*sizeof(f32));
-  }
-}
 
 typedef std::valarray<f32> ImageDataValues;
 typedef std::tr1::shared_ptr<ImageDataValues> ImageDataValuesPtr;
@@ -106,9 +83,24 @@ class ImageData {
     return ImageData(*this, true);
   }
   
-  void pad(i32 leftPad, i32 rightPad, i32 bottomPad, i32 topPad,
+  ImageData& pad(i32 leftPad, i32 rightPad, i32 bottomPad, i32 topPad,
            f32 padVal = 0.f) {
     initWithPadding(&(*data_)[0], leftPad, rightPad, bottomPad, topPad, padVal);
+    return *this;
+  }
+  
+  ImageData& align(i32 xAlign, i32 yAlign, f32 padVal = 0.f) {
+    i32 paddedWidth, paddedHeight;
+    CalcAlignedSizes(width_, height_, xAlign, yAlign,
+                     &paddedWidth, &paddedHeight);
+    i32 xPadding = paddedWidth - width_;
+    i32 yPadding = paddedHeight - height_;
+    i32 leftPad = xPadding/2 + xPadding%2;
+    i32 rightPad = xPadding/2;
+    i32 bottomPad = yPadding/2 + yPadding%2;
+    i32 topPad = yPadding/2;
+    initWithPadding(&(*data_)[0], leftPad, rightPad, bottomPad, topPad, padVal);
+    return *this;
   }
   
   inline i32 numElems() const { return i32((*data_).size()); }
