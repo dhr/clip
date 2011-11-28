@@ -399,8 +399,8 @@ kernel void filter(input_t image,
   int half_filt_height = filt_height/2;
   int filt_y_lim = filt_height - half_filt_height;
   
-  int2 foff = (int2) (half_filt_width, half_filt_height);
-  int2 xoff = (int2) (1, 0);
+  int2 foff = (int2)(half_filt_width, half_filt_height);
+  int2 xoff = (int2)(1, 0);
   
   float4 sum = 0.f;
   if (filt_width%2 == 0) {
@@ -431,7 +431,7 @@ kernel void filter(input_t image,
       
       imval2 = load(gid + fc - xoff, image);
       imval3 = load(gid + fc, image);
-      for (; fc.x < half_filt_width; fc.x++) {
+      for (; fc.x <= half_filt_width; fc.x++) {
         fval = loadf4((fc.y + foff.y)*filt_width + fc.x + foff.x, filter);
         
         imval1 = imval2;
@@ -459,18 +459,19 @@ kernel void filter_sparse(input_t image,
   int half_filt_width = filt_width/2;
   int half_filt_height = filt_height/2;
   
-  int2 fcenter = (int2) (half_filt_width, half_filt_height);
-  int2 xinc = (int2) (1, 0);
+  int2 fcenter = (int2)((half_filt_width + 3)/4, half_filt_height);
+  int2 xinc = (int2)(1, 0);
   int2 origin = gid - fcenter;
+  int center_mod = 4 - (half_filt_width%4);
   
   float4 sum = 0.f;
   for (int i = 0; i < num_filt_elems; ++i) {
     sparse_float sf = loads1(i, filter);
-    int2 foff = (int2) (sf.x/4, sf.y);
+    int2 foff = (int2)((sf.x + center_mod)/4, sf.y);
     float4 im1 = load(origin + foff, image);
     
     float4 shifted, im2;
-    switch (sf.x%4) {
+    switch ((sf.x + center_mod)%4) {
       case 0:
         shifted = im1;
         break;
