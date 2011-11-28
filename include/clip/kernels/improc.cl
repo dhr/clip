@@ -462,7 +462,7 @@ kernel void filter_sparse(input_t image,
   int2 fcenter = (int2)((half_filt_width + 3)/4, half_filt_height);
   int2 xinc = (int2)(1, 0);
   int2 origin = gid - fcenter;
-  int center_mod = 4 - (half_filt_width%4);
+  int center_mod = (4 - half_filt_width%4)%4;
   
   float4 sum = 0.f;
   for (int i = 0; i < num_filt_elems; ++i) {
