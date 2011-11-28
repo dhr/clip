@@ -416,25 +416,10 @@ kernel void filter(input_t image,
         imval1 = imval2;
         imval2 = load(gid + fc + xoff, image);
         
-        sum.x += fval.x*imval1.x;
-        sum.x += fval.y*imval1.y;
-        sum.x += fval.z*imval1.z;
-        sum.x += fval.w*imval1.w;
-        
-        sum.y += fval.x*imval1.y;
-        sum.y += fval.y*imval1.z;
-        sum.y += fval.z*imval1.w;
-        sum.y += fval.w*imval2.x;
-        
-        sum.z += fval.x*imval1.z;
-        sum.z += fval.y*imval1.w;
-        sum.z += fval.z*imval2.x;
-        sum.z += fval.w*imval2.y;
-        
-        sum.w += fval.x*imval1.w;
-        sum.w += fval.y*imval2.x;
-        sum.w += fval.z*imval2.y;
-        sum.w += fval.w*imval2.z;
+        sum += fval.x*imval1;
+        sum += fval.y*((float4)(imval1.y, imval1.z, imval1.w, imval2.x));
+        sum += fval.z*((float4)(imval1.z, imval1.w, imval2.x, imval2.y));
+        sum += fval.w*((float4)(imval1.w, imval2.x, imval2.y, imval2.z));
       }
     }
   }
@@ -453,25 +438,10 @@ kernel void filter(input_t image,
         imval2 = imval3;
         imval3 = load(gid + fc + xoff, image);
         
-        sum.x += fval.x*imval1.z;
-        sum.x += fval.y*imval1.w;
-        sum.x += fval.z*imval2.x;
-        sum.x += fval.w*imval2.y;
-        
-        sum.y += fval.x*imval1.w;
-        sum.y += fval.y*imval2.x;
-        sum.y += fval.z*imval2.y;
-        sum.y += fval.w*imval2.z;
-        
-        sum.z += fval.x*imval2.x;
-        sum.z += fval.y*imval2.y;
-        sum.z += fval.z*imval2.z;
-        sum.z += fval.w*imval2.w;
-        
-        sum.w += fval.x*imval2.y;
-        sum.w += fval.y*imval2.z;
-        sum.w += fval.z*imval2.w;
-        sum.w += fval.w*imval3.x;
+        sum += fval.x*((float4)(imval1.z, imval1.w, imval2.x, imval2.y));
+        sum += fval.y*((float4)(imval1.w, imval2.x, imval2.y, imval2.z));
+        sum += fval.z*imval2;
+        sum += fval.w*((float4)(imval2.y, imval2.z, imval2.w, imval3.x));
       }
     }
   }
@@ -507,17 +477,17 @@ kernel void filter_sparse(input_t image,
         
       case 1:
         im2 = load(origin + foff + xinc, image);
-        shifted = (float4) (im1.y, im1.z, im1.w, im2.x);
+        shifted = (float4)(im1.y, im1.z, im1.w, im2.x);
         break;
         
       case 2:
         im2 = load(origin + foff + xinc, image);
-        shifted = (float4) (im1.z, im1.w, im2.x, im2.y);
+        shifted = (float4)(im1.z, im1.w, im2.x, im2.y);
         break;
         
       case 3:
         im2 = load(origin + foff + xinc, image);
-        shifted = (float4) (im1.w, im2.x, im2.y, im2.z);
+        shifted = (float4)(im1.w, im2.x, im2.y, im2.z);
         break;
     }
     
