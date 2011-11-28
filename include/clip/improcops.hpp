@@ -184,8 +184,8 @@ inline ImageBuffer Filter(const ImageBuffer& image,
 }
 
 class GaussianBlurOp {
-  ImageData gaussianX_;
-  ImageData gaussianY_;
+  ImageData gaussianX_, gaussianY_;
+  SparseImageData sparseX_, sparseY_;
   
   f32 sigma_;
   
@@ -198,6 +198,8 @@ class GaussianBlurOp {
     }
     gaussianX_.normalize();
     gaussianY_ = ImageData(&gaussianX_.data()[0], 1, gaussianX_.width());
+    sparseX_ = SparseImageData(gaussianX_);
+    sparseY_ = SparseImageData(gaussianY_);
   }
   
  public:
@@ -210,8 +212,8 @@ class GaussianBlurOp {
   
   template<typename T>
   T operator()(const T& i1, T o) {
-    Filter(i1, gaussianX_, o);
-    return Filter(o, gaussianY_, o);
+    Filter(i1, sparseX_, o);
+    return Filter(o, sparseY_, o);
   }
   
   template<typename T>
@@ -219,8 +221,8 @@ class GaussianBlurOp {
 };
 
 class GradientOp {
-  ImageData sobelX_;
-  ImageData sobelY_;
+  ImageData sobelX_, sobelY_;
+  SparseImageData sparseX_, sparseY_;
   
   void initGradients() {
     f32 sobelX[] = {-1,  0,  1,
@@ -234,6 +236,8 @@ class GradientOp {
     
     sobelX_ = ImageData(sobelX, 3, 3).normalize();
     sobelY_ = ImageData(sobelY, 3, 3).normalize();
+    sparseX_ = SparseImageData(sobelX_);
+    sparseY_ = SparseImageData(sobelY_);
   }
   
  public:
@@ -243,8 +247,8 @@ class GradientOp {
   
   template<typename T>
   void operator()(const T& i1, T gx, T gy) {
-    Filter(i1, sobelX_, gx);
-    Filter(i1, sobelY_, gy);
+    Filter(i1, sparseX_, gx);
+    Filter(i1, sparseY_, gy);
   }
 };
 
