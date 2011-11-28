@@ -374,6 +374,14 @@ inline ImageBuffer operator+(const ImageBuffer& a, f32 amt) {
   return Add(a, amt);
 }
 
+inline ImageBuffer operator+(f32 amt, const ImageBuffer& a) {
+  return Add(a, amt);
+}
+
+inline ImageBuffer operator-(const ImageBuffer& a) {
+  return Negate(a);
+}
+
 inline ImageBuffer operator-(const ImageBuffer& a, const ImageBuffer& b) {
   return Sub(a, b);
 }
@@ -382,11 +390,19 @@ inline ImageBuffer operator-(const ImageBuffer& a, f32 amt) {
   return Add(a, -amt);
 }
 
+inline ImageBuffer operator-(f32 amt, const ImageBuffer& a) {
+  return Add(-a, amt);
+}
+
 inline ImageBuffer operator*(const ImageBuffer& a, const ImageBuffer& b) {
   return Mul(a, b);
 }
 
 inline ImageBuffer operator*(const ImageBuffer& a, f32 amt) {
+  return Mul(a, amt);
+}
+
+inline ImageBuffer operator*(f32 amt, const ImageBuffer& a) {
   return Mul(a, amt);
 }
 
@@ -398,6 +414,12 @@ inline ImageBuffer operator/(const ImageBuffer& a, f32 amt) {
   return Mul(a, 1/amt);
 }
 
+inline ImageBuffer operator/(f32 amt, const ImageBuffer& a) {
+  ImageBuffer temp = a/amt;
+  temp ^= -1;
+  return temp;
+}
+  
 inline ImageBuffer operator^(const ImageBuffer& a, f32 amt) {
   return Power(a, amt, false);
 }
