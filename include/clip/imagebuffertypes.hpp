@@ -5,9 +5,10 @@
 namespace clip {
 
 enum ImageBufferType {
+  Default,
   Global,
-  Texture,
-  Default
+  Constant,
+  Texture
 };
 
 }

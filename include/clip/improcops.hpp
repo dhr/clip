@@ -17,7 +17,7 @@ void LoadFilters(InIterator begin, InIterator end, OutIterator output) {
   i32 xAlign = (CurrentBufferType() == Texture)*3 + 1;
   for (InIterator i = begin; i != end; ++i) {
     *output++ = ImageBuffer(*i, CurrentFilterValueType(),
-                            xAlign, 1, Global, false);
+                            xAlign, 1, Constant, false);
   }
 }
 
@@ -153,8 +153,7 @@ inline ImageBuffer Filter(const ImageBuffer& image, const ImageData& filter,
   ImageBuffer filterBuffer(detail::filterMemory(),
                            filter.width(), filter.height(),
                            CurrentFilterValueType(),
-                           (image.type() == Texture)*3 + 1, 1,
-                           Global);
+                           (image.type() == Texture)*3 + 1, 1);
   filterBuffer.sendData(filter);
   return Filter(image, filterBuffer, o);
 }
@@ -166,7 +165,6 @@ inline ImageBuffer Filter(const ImageBuffer& image, const ImageData& filter) {
 inline ImageBuffer Filter(const ImageBuffer& image,
                           const SparseImageData& filter,
                           ImageBuffer o) {
-  // This reserves space for a filter with maximum size 10000 bytes
   SparseImageBuffer filterBuffer(detail::filterMemory(),
                                  filter.width(), filter.height(),
                                  filter.numElems(),

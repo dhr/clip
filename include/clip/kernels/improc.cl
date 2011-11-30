@@ -1,6 +1,8 @@
+#define filter_storage global
+
 #if defined(USE_CPU)
 kernel void filter(input_t image,
-                   constant filtval_t* filter,
+                   filter_storage filtval_t* filter,
                    int filt_width, int filt_height,
                    output_t output) {
   int im_width = get_global_size(0);
@@ -66,7 +68,7 @@ kernel void filter(input_t image,
 }
 
 kernel void filter_sparse(input_t image,
-                          constant sparse_filtval* filter,
+                          filter_storage sparse_filtval* filter,
                           int filt_width,
                           int filt_height,
                           int num_filt_elems,
@@ -109,7 +111,7 @@ kernel void filter_sparse(input_t image,
 #elif !defined(USE_TEXTURES)
 kernel void filter(input_t image,
                    local float* im_cache,
-                   constant filtval_t* filter,
+                   filter_storage filtval_t* filter,
                    local float* filt_cache,
                    int filt_width, int filt_height,
                    output_t output) {
@@ -250,7 +252,7 @@ kernel void filter(input_t image,
 
 kernel void filter_sparse(input_t image,
                           local float* im_cache,
-                          constant sparse_filtval* filter,
+                          filter_storage sparse_filtval* filter,
                           local sparse_float* filt_cache,
                           int filt_width,
                           int filt_height,
@@ -388,7 +390,7 @@ kernel void filter_sparse(input_t image,
 #else
 #if 1
 kernel void filter(input_t image,
-                   constant filtval_t* filter,
+                   filter_storage filtval_t* filter,
                    int filt_width, int filt_height,
                    output_t output) {
   int2 gid = get_global_index();
@@ -450,7 +452,7 @@ kernel void filter(input_t image,
 }
 
 kernel void filter_sparse(input_t image,
-                          constant sparse_filtval* filter,
+                          filter_storage sparse_filtval* filter,
                           int filt_width, int filt_height,
                           int num_filt_elems,
                           output_t output) {
@@ -500,7 +502,7 @@ kernel void filter_sparse(input_t image,
 #else
 kernel void filter(read_only image2d_t image,
                    local float *im_cache,
-                   constant float4 *filter,
+                   filter_storage float4 *filter,
                    int filt_width, int filt_height,
                    write_only image2d_t output) {
   int2 gid = (int2) (get_global_id(0), get_global_id(1));

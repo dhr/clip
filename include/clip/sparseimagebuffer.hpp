@@ -16,15 +16,17 @@ class SparseImageBuffer {
   
   explicit
   SparseImageBuffer(const SparseImageData &data, ValueType valType,
-                    cl_mem_flags flags = 0) {
+                    ImageBufferType type = Constant) {
+    cl_mem_flags flags = type == Constant ? CL_MEM_READ_ONLY : 0;
     impl_ = detail::SparseImageBufferImplPtr(
       new detail::SparseImageBufferImpl(data, valType, flags));
   }
   
   explicit
   SparseImageBuffer(const ImageData &data, ValueType valType,
-                    cl_mem_flags flags = 0) {
+                    ImageBufferType type = Constant) {
     SparseImageData sid(data);
+    cl_mem_flags flags = type == Constant ? CL_MEM_READ_ONLY : 0;
     detail::SparseImageBufferImpl* p =
       new detail::SparseImageBufferImpl(sid, valType, flags);
     impl_ = detail::SparseImageBufferImplPtr(p);

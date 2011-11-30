@@ -39,11 +39,12 @@ class ImageBuffer {
       impl_ = impl;
       if (data) sendData(data);
     }
-    else if (type == Global) {
+    else if (type == Global || type == Constant) {
       if (xAlign < 0) xAlign = 64;
       if (yAlign < 0) yAlign = 16;
       impl_ = ImageBufferImplPtr(
-        new GlobalBufferImpl(data, width, height, valType, xAlign, yAlign, 0));
+        new GlobalBufferImpl(data, width, height, valType, xAlign, yAlign,
+                             type == Constant ? CL_MEM_READ_ONLY : 0));
     }
     else {
       if (xAlign < 0) xAlign = 64;
@@ -104,8 +105,7 @@ class ImageBuffer {
   }
   
   ImageBuffer(cl::Buffer data, i32 width, i32 height, ValueType valType,
-              i32 xAlign = -1, i32 yAlign = -1, ImageBufferType type = Default,
-              bool cacheable = false)
+              i32 xAlign = -1, i32 yAlign = -1, bool cacheable = false)
   : cacheable_(cacheable)
   {
     impl_ = detail::ImageBufferImplPtr(
