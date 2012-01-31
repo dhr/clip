@@ -162,6 +162,11 @@ ImageBuffer Merge(Binary op, i32 n, InputAdaptor& input, ImageBuffer output) {
   return output;
 }
 
+template<typename Binary>
+ImageBuffer Merge(Binary op, i32 n, InputAdaptor& input) {
+  return Merge(op, n, input, ~input.peek());
+}
+
 inline ImageBuffer Merge(MergeOp op, i32 n, InputAdaptor& input,
                          ImageBuffer output) {
   if (n >= 4) {
@@ -238,10 +243,18 @@ static DivOp Div;
 struct NegOp : public UnaryOp { NegOp() : UnaryOp("negate") {} };
 static NegOp Negate;
 
+struct AbsOp : public UnaryOp { AbsOp() : UnaryOp("absval") {} };
+static AbsOp Abs;
+
+struct SqrtOp : public UnaryOp { SqrtOp() : UnaryOp("squareroot") {} };
+static SqrtOp Sqrt;
+
 struct BoundOp : public UnaryOp { BoundOp() : UnaryOp("bound") {} };
 static BoundOp Bound;
 
-struct HalfRectifyOp : public UnaryOp { HalfRectifyOp() : UnaryOp("bound") {} };
+struct HalfRectifyOp : public UnaryOp {
+  HalfRectifyOp() : UnaryOp("halfrect") {}
+};
 static HalfRectifyOp HalfRectify;
 
 struct ThresholdOp : public ScalarOp {

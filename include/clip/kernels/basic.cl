@@ -1,6 +1,6 @@
 kernel void writeval(output_t buffer, float value) {
   index_t indx = get_global_index();
-  store((calc_t) value, indx, buffer);
+  store((calc_t)(value), indx, buffer);
 }
 
 kernel void scale(input_t input, float amount,
@@ -16,13 +16,25 @@ kernel void power(input_t input,
   index_t indx = get_global_index();
   calc_t val = load(indx, input);
   val = absify ? fabs(val) : val;
-	store(pow(val, (calc_t) amount), indx, output);
+	store(pow(val, (calc_t)(amount)), indx, output);
 }
 
 kernel void negate(input_t input,
                    output_t output) {
   index_t indx = get_global_index();
 	store(-load(indx, input), indx, output);
+}
+
+kernel void absval(input_t input,
+                   output_t output) {
+  index_t indx = get_global_index();
+	store(fabs(load(indx, input)), indx, output);
+}
+
+kernel void squareroot(input_t input,
+                       output_t output) {
+  index_t indx = get_global_index();
+  store(native_sqrt(load(indx, input)), indx, output);
 }
 
 kernel void halfrect(input_t input,

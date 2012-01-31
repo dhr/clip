@@ -136,12 +136,18 @@ inline ImageBuffer Filter(const ImageBuffer& image,
 
 namespace detail {
 
+#define CLIP_MAX_FILTER_LENGTH (1 << 16)
+
 inline cl::Buffer& filterMemory() {
   static ContextID contextID = CurrentContextID();
-  static cl::Buffer filterMemory(CurrentContext(), CL_MEM_READ_ONLY, 10000);
+  static cl::Buffer filterMemory(CurrentContext(),
+                                 CL_MEM_READ_ONLY,
+                                 CLIP_MAX_FILTER_LENGTH);
   
   if (contextID != CurrentContextID())
-    filterMemory = cl::Buffer(CurrentContext(), CL_MEM_READ_ONLY, 10000);
+    filterMemory = cl::Buffer(CurrentContext(),
+                              CL_MEM_READ_ONLY,
+                              CLIP_MAX_FILTER_LENGTH);
   
   return filterMemory;
 }
