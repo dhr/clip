@@ -88,7 +88,11 @@ inline ImageBuffer Filter(const ImageBuffer& image,
     kernel.setArg(3, filter.height());
     kernel.setArg(4, filter.numElems());
     kernel.setArg(5, o.mem());
-    Enqueue(kernel, o);
+    Enqueue(kernel,
+            cl::NullRange,
+            cl::NDRange(image.paddedWidth()/((image.type() == Texture)*3 + 1),
+                        image.paddedHeight()),
+            cl::NullRange);
   }
   else {
     if (filter.numElems() == 0)

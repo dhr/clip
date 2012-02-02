@@ -241,7 +241,7 @@ inline void AddProgram(const std::string& progName,
       throw std::logic_error("Unrecognized value type");
   }
   
-  if (settings.bufferType == Texture)
+  if (settings.bufferType == Texture && CurrentDeviceType() != CPU)
     ss << "-D USE_TEXTURES ";
   
   if (CurrentDeviceType() == CPU)
