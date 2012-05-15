@@ -123,6 +123,13 @@ kernel void max2(input_t input1,
   store(fmax(load(indx, input1), load(indx, input2)), indx, output);
 }
 
+kernel void min2(input_t input1,
+                 input_t input2,
+                 output_t output) {
+	index_t indx = get_global_index();
+  store(fmin(load(indx, input1), load(indx, input2)), indx, output);
+}
+
 kernel void max4(input_t input1,
                  input_t input2,
                  input_t input3,
@@ -132,6 +139,18 @@ kernel void max4(input_t input1,
   calc_t result = fmax(load(indx, input1), load(indx, input2));
   result = fmax(result, load(indx, input3));
   result = fmax(result, load(indx, input4));
+  store(result, indx, output);
+}
+
+kernel void min4(input_t input1,
+                 input_t input2,
+                 input_t input3,
+                 input_t input4,
+                 output_t output) {
+	index_t indx = get_global_index();
+  calc_t result = fmin(load(indx, input1), load(indx, input2));
+  result = fmin(result, load(indx, input3));
+  result = fmin(result, load(indx, input4));
   store(result, indx, output);
 }
 
