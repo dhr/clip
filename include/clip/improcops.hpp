@@ -140,7 +140,7 @@ inline ImageBuffer Filter(const ImageBuffer& image,
 
 namespace detail {
 
-#define CLIP_MAX_FILTER_LENGTH (1 << 16)
+#define CLIP_MAX_FILTER_LENGTH (1 << 18)
 
 inline cl::Buffer& filterMemory() {
   static ContextID contextID = CurrentContextID();
