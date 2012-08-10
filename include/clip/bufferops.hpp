@@ -210,10 +210,18 @@ void Map(Unary op, i32 n, InputAdaptor& input, OutputAdaptor& output) {
     output.output(op(input.next()));
 }
 
-struct MaxOp : public MergeOp { MaxOp() : MergeOp("max") {} };
+struct MaxOp : public MergeOp, public ScalarOp {
+  MaxOp() : MergeOp("max"), ScalarOp("scalarmax") {}
+  using MergeOp::operator();
+  using ScalarOp::operator();
+};
 static MaxOp Max;
 
-struct MinOp : public MergeOp { MinOp() : MergeOp("min") {} };
+struct MinOp : public MergeOp, public ScalarOp {
+  MinOp() : MergeOp("min"), ScalarOp("scalarmin") {}
+  using MergeOp::operator();
+  using ScalarOp::operator();
+};
 static MinOp Min;
 
 struct AddOp : public MergeOp, public ScalarOp {

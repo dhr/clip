@@ -116,6 +116,22 @@ kernel void abssum4(input_t input1,
         indx, output);
 }
 
+kernel void scalarmax(input_t input,
+                      float compare,
+                      output_t output) {
+  index_t indx = get_global_index();
+  calc_t compare_val = compare;
+  store(fmax(load(indx, input), compare_val), indx, output);
+}
+
+kernel void scalarmin(input_t input,
+                      float compare,
+                      output_t output) {
+  index_t indx = get_global_index();
+  calc_t compare_val = compare;
+  store(fmin(load(indx, input), compare_val), indx, output);
+}
+
 kernel void max2(input_t input1,
                  input_t input2,
                  output_t output) {
