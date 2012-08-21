@@ -81,6 +81,9 @@ inline ImageBuffer Filter(const ImageBuffer& image,
   static CachedKernel cache("filter_sparse");
   cl::Kernel& kernel = cache.get();
   
+  if (filter.numElems() == 0)
+    return Memset(o, 0);
+  
   if (CurrentDeviceType() == CPU || image.type() == Texture) {
     kernel.setArg(0, image.mem());
     kernel.setArg(1, filter.mem());
@@ -95,9 +98,6 @@ inline ImageBuffer Filter(const ImageBuffer& image,
             cl::NullRange);
   }
   else {
-    if (filter.numElems() == 0)
-      return Memset(o, 0);
-    
     i32 kernWidth = filter.width();
     i32 halfKernWidth = kernWidth/2;
     i32 kernHeight = filter.height();
