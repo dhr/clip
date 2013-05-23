@@ -74,21 +74,33 @@
 #   define store(val, off, p) write_imagef((p), (off), (val))
 # endif
 #else // Using global memory
+
+typedef int index_t;
+
+index_t get_global_index(void);
+index_t get_global_index(void) {
+  int x = get_global_id(0);
+  int y = get_global_id(1);
+  int width = get_global_size(0);
+  return y*width + x;
+}
+
 # if defined(MEMVAL_HALF)
 #   define memval_t half
+
+    kernel void half2float(global half* input, global float* output) {
+      int indx = get_global_index();
+      output[indx] = vload_half(indx, input);
+    }
+
+    kernel void float2half(global float* input, global half* output) {
+      int indx = get_global_index();
+      vstore_half(input[indx], indx, output);
+    }
+
 # else
 #   define memval_t float
 # endif
-
-  typedef int index_t;
-  
-  index_t get_global_index(void);
-  index_t get_global_index(void) {
-    int x = get_global_id(0);
-    int y = get_global_id(1);
-    int width = get_global_size(0);
-    return y*width + x;
-  }
 
 # define input_t global memval_t*
 # define output_t global memval_t*
